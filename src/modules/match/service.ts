@@ -10,11 +10,11 @@ interface MatchResultData {
   verifiedBy?: string;
 }
 
-// interface DisputeData {
-//   reason: string;
-//   evidence?: string;
-//   disputedBy: string;
-// }
+interface DisputeData {
+  reason: string;
+  evidence?: string;
+  disputedBy: string;
+}
 
 export const getMatchById = async (id: string) => {
   return prisma.match.findUnique({
@@ -312,108 +312,108 @@ export const verifyMatchResult = async (matchId: string, verifyingUserId: string
   return updatedMatch;
 };
 
-// export const disputeMatchResult = async (matchId: string, disputingUserId: string, disputeData: DisputeData) => {
-//   // Get match with participant details to verify permissions
-//   const match = await prisma.match.findUnique({
-//     where: { id: matchId },
-//     include: {
-//       tournament: true,
-//       participantA: {
-//         include: {
-//           user: true,
-//           team: {
-//             include: {
-//               members: true
-//             }
-//           }
-//         }
-//       },
-//       participantB: {
-//         include: {
-//           user: true,
-//           team: {
-//             include: {
-//               members: true
-//             }
-//           }
-//         }
-//       }
-//     }
-//   });
+export const disputeMatchResult = async (matchId: string, disputingUserId: string, disputeData: DisputeData) => {
+  // Get match with participant details to verify permissions
+  const match = await prisma.match.findUnique({
+    where: { id: matchId },
+    include: {
+      tournament: true,
+      participantA: {
+        include: {
+          user: true,
+          team: {
+            include: {
+              members: true
+            }
+          }
+        }
+      },
+      participantB: {
+        include: {
+          user: true,
+          team: {
+            include: {
+              members: true
+            }
+          }
+        }
+      }
+    }
+  });
   
-//   if (!match) {
-//     throw new Error('Match not found');
-//   }
+  if (!match) {
+    throw new Error('Match not found');
+  }
   
-//   // Check if match is in a disputeEnable state
-//   if (match.status !== MatchStatus.COMPLETED) {
-//     throw new Error('Only completed matches can be disputed');
-//   }
+  // Check if match is in a disputeEnable state
+  if (match.status !== MatchStatus.COMPLETED) {
+    throw new Error('Only completed matches can be disputed');
+  }
   
-//   // Verify user is a participant in the match
-//   const isParticipant = await verifyMatchParticipant(match, disputingUserId);
-//   if (!isParticipant) {
-//     throw new Error('Only match participants can dispute results');
-//   }
+  // Verify user is a participant in the match
+  const isParticipant = await verifyMatchParticipant(match, disputingUserId);
+  if (!isParticipant) {
+    throw new Error('Only match participants can dispute results');
+  }
   
-//   // Create dispute object
-//   const dispute = {
-//     reason: disputeData.reason,
-//     evidence: disputeData.evidence,
-//     disputedAt: new Date(),
-//     disputedBy: disputeData.disputedBy,
-//     originalResult: match.result
-//   };
+  // Create dispute object
+  const dispute = {
+    reason: disputeData.reason,
+    evidence: disputeData.evidence,
+    disputedAt: new Date(),
+    disputedBy: disputeData.disputedBy,
+    originalResult: match.result
+  };
   
-//   // Add dispute information to the match
-//   return prisma.match.update({
-//     where: { id: matchId },
-//     data: {
-//       status: MatchStatus.DISPUTED,
-//       dispute: dispute as any
-//     },
-//     include: {
-//       tournament: {
-//         select: {
-//           id: true,
-//           title: true,
-//         }
-//       },
-//       participantA: {
-//         include: {
-//           user: {
-//             select: {
-//               id: true,
-//               username: true,
-//             }
-//           },
-//           team: {
-//             select: {
-//               id: true,
-//               name: true,
-//             }
-//           }
-//         }
-//       },
-//       participantB: {
-//         include: {
-//           user: {
-//             select: {
-//               id: true,
-//               username: true,
-//             }
-//           },
-//           team: {
-//             select: {
-//               id: true,
-//               name: true,
-//             }
-//           }
-//         }
-//       }
-//     }
-//   });
-// };
+  // Add dispute information to the match
+  return prisma.match.update({
+    where: { id: matchId },
+    data: {
+      status: MatchStatus.DISPUTED,
+      dispute: dispute as any
+    },
+    include: {
+      tournament: {
+        select: {
+          id: true,
+          title: true,
+        }
+      },
+      participantA: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+            }
+          },
+          team: {
+            select: {
+              id: true,
+              name: true,
+            }
+          }
+        }
+      },
+      participantB: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+            }
+          },
+          team: {
+            select: {
+              id: true,
+              name: true,
+            }
+          }
+        }
+      }
+    }
+  });
+};
 
 export const updateMatchSchedule = async (matchId: string, updatingUserId: string, startTime: Date) => {
   // Get match to verify permissions

@@ -160,10 +160,11 @@ model Match {
   endTime           DateTime?
   status            MatchStatus     @default(PENDING)
   result            Json?
+  dispute   Json?
   judgeId           String?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
-  
+  bracketSection    String? 
   // Relations
   tournament        Tournament      @relation(fields: [tournamentId], references: [id])
   participantA      Participation?  @relation("ParticipantA", fields: [participantAId], references: [id])
