@@ -72,24 +72,24 @@ export const verifyMatchResult = async (req: Request, res: Response) => {
   }
 };
 
-export const disputeMatchResult = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user!.id;
-    const { reason, evidence } = req.body;
+// export const disputeMatchResult = async (req: Request, res: Response) => {
+//   try {
+//     const { id } = req.params;
+//     const userId = req.user!.id;
+//     const { reason, evidence } = req.body;
     
-    const match = await matchService.disputeMatchResult(id, userId, {
-      reason,
-      evidence,
-      disputedBy: userId
-    });
+//     const match = await matchService.disputeMatchResult(id, userId, {
+//       reason,
+//       evidence,
+//       disputedBy: userId
+//     });
     
-    res.json(match);
-  } catch (error: any) {
-    console.error('Error disputing match result:', error);
-    res.status(400).json({ error: error.message || 'Failed to dispute match result' });
-  }
-};
+//     res.json(match);
+//   } catch (error: any) {
+//     console.error('Error disputing match result:', error);
+//     res.status(400).json({ error: error.message || 'Failed to dispute match result' });
+//   }
+// };
 
 export const updateMatchSchedule = async (req: Request, res: Response) => {
   try {

@@ -13,7 +13,7 @@ router.get('/tournaments/:tournamentId/bracket', matchController.getTournamentBr
 
 // Protected routes - require authentication
 router.post('/matches/:id/report', authenticate, validateMatchResult, matchController.reportMatchResult);
-router.post('/matches/:id/dispute', authenticate, validateDispute, matchController.disputeMatchResult);
+// router.post('/matches/:id/dispute', authenticate, validateDispute, matchController.disputeMatchResult);
 
 // Admin/judge routes
 router.put('/matches/:id/verify', authenticate, requireJudgeOrAdmin, validateMatchResult, matchController.verifyMatchResult);
