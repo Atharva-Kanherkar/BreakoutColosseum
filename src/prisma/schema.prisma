@@ -1,0 +1,181 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                 String               @id @default(uuid())
+  email              String               @unique
+  username           String?              @unique
+  displayName        String?
+  avatar             String?
+  role               UserRole             @default(PLAYER)
+  bio                String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  supabaseId         String               @unique
+  
+  // Relations
+  organizedTournaments Tournament[]        @relation("TournamentOrganizer")
+  playerParticipations Participation[]
+  teams              TeamMember[]
+  createdTeams       Team[]               @relation("TeamCreator")
+  matchesJudged      Match[]              @relation("MatchJudge")
+}
+
+enum UserRole {
+  PLAYER
+  ORGANIZER
+  ADMIN
+}
+
+model Tournament {
+  id                String             @id @default(uuid())
+  title             String
+  description       String?            @db.Text
+  format            TournamentFormat
+  status            TournamentStatus   @default(REGISTRATION)
+  maxParticipants   Int?
+  startDate         DateTime
+  endDate           DateTime?
+  registrationEnd   DateTime
+  prizePool         Decimal?           @db.Decimal(10, 2)
+  entryFee          Decimal?           @db.Decimal(10, 2)
+  rules             Json?
+  visibility        Visibility         @default(PUBLIC)
+  participantType   ParticipantType
+  organizerId       String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  
+  // Relations
+  organizer         User               @relation("TournamentOrganizer", fields: [organizerId], references: [id])
+  matches           Match[]
+  participations    Participation[]
+}
+
+enum TournamentFormat {
+  SINGLE_ELIMINATION
+  DOUBLE_ELIMINATION
+  ROUND_ROBIN
+  SWISS
+  CUSTOM
+}
+
+enum TournamentStatus {
+  REGISTRATION
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum ParticipantType {
+  INDIVIDUAL
+  TEAM
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+  UNLISTED
+}
+
+model Participation {
+  id            String          @id @default(uuid())
+  tournamentId  String
+  userId        String?
+  teamId        String?
+  seed          Int?
+  registeredAt  DateTime        @default(now())
+  status        ParticipantStatus @default(REGISTERED)
+  
+  // Relations
+  tournament    Tournament      @relation(fields: [tournamentId], references: [id])
+  user          User?           @relation(fields: [userId], references: [id])
+  team          Team?           @relation(fields: [teamId], references: [id])
+  matchesAsParticipantA Match[] @relation("ParticipantA")
+  matchesAsParticipantB Match[] @relation("ParticipantB")
+
+  @@unique([tournamentId, userId])
+  @@unique([tournamentId, teamId])
+}
+
+enum ParticipantStatus {
+  REGISTERED
+  CHECKED_IN
+  ACTIVE
+  ELIMINATED
+  WINNER
+  DISQUALIFIED
+}
+
+model Team {
+  id                String          @id @default(uuid())
+  name              String
+  tag               String?
+  logo              String?
+  creatorId         String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  
+  // Relations
+  creator           User            @relation("TeamCreator", fields: [creatorId], references: [id])
+  members           TeamMember[]
+  participations    Participation[]
+}
+
+model TeamMember {
+  id                String          @id @default(uuid())
+  teamId            String
+  userId            String
+  role              TeamRole        @default(MEMBER)
+  joinedAt          DateTime        @default(now())
+  
+  // Relations
+  team              Team            @relation(fields: [teamId], references: [id])
+  user              User            @relation(fields: [userId], references: [id])
+
+  @@unique([teamId, userId])
+}
+
+enum TeamRole {
+  OWNER
+  CAPTAIN
+  MEMBER
+}
+
+model Match {
+  id                String          @id @default(uuid())
+  tournamentId      String
+  round             Int
+  matchNumber       Int
+  participantAId    String?
+  participantBId    String?
+  startTime         DateTime?
+  endTime           DateTime?
+  status            MatchStatus     @default(PENDING)
+  result            Json?
+  judgeId           String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  
+  // Relations
+  tournament        Tournament      @relation(fields: [tournamentId], references: [id])
+  participantA      Participation?  @relation("ParticipantA", fields: [participantAId], references: [id])
+  participantB      Participation?  @relation("ParticipantB", fields: [participantBId], references: [id])
+  judge             User?           @relation("MatchJudge", fields: [judgeId], references: [id])
+}
+
+enum MatchStatus {
+  PENDING
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
