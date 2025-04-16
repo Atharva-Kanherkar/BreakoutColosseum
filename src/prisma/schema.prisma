@@ -26,6 +26,7 @@ model User {
   avatar               String?                 // Add this field
   bio                  String?                 // Add this field
   createdAt            DateTime                @default(now())
+    judgedMatches Match[]   @relation("JudgedMatches")
   updatedAt            DateTime                @updatedAt
   supabaseId           String?                 @unique
   isAdmin             Boolean                @default(false)
@@ -36,6 +37,69 @@ model User {
   // Tournaments this user is spectating (Direct M2M relation)
   spectatedTournaments Tournament[]            @relation("SpectatedTournaments")
 }
+
+// ... existing schema content ...
+
+enum MatchStatus {
+  PENDING      // Match is scheduled but hasn't started
+  IN_PROGRESS  // Match is currently being played
+  COMPLETED    // Match is finished with a valid result
+  CANCELLED    // Match was cancelled before completion
+  DISPUTED     // Result is being disputed
+}
+
+model Match {
+  id           String      @id @default(cuid())
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  scheduledTime DateTime?  // When the match is scheduled to occur
+  startTime    DateTime?   // Actual start time
+  endTime      DateTime?   // When the match ended
+  status       MatchStatus @default(PENDING)
+  round        Int         // Tournament round number
+  matchNumber  Int         // Match number within the round
+  
+  // Which tournament this match belongs to
+  tournament   Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  tournamentId String
+  
+  // Match participants - the teams or individual participants
+  teamA        Team?       @relation("TeamAMatches", fields: [teamAId], references: [id])
+  teamAId      String?
+  teamB        Team?       @relation("TeamBMatches", fields: [teamBId], references: [id])
+  teamBId      String?
+  
+  // For individual participants (non-team tournaments)
+  participantA TournamentParticipant? @relation("ParticipantAMatches", fields: [participantAId], references: [id])
+  participantAId String?
+  participantB TournamentParticipant? @relation("ParticipantBMatches", fields: [participantBId], references: [id])
+  participantBId String?
+  
+  // For bracket tracking
+  nextMatchId  String?    // The ID of the next match the winner advances to
+  
+  // Match result - using JSON for flexibility
+  result       Json?      // { winnerId: string, score: { teamA: number, teamB: number } }
+  
+  // For bracket generation/tracking
+  bracketSection String?  // e.g., "WINNERS", "LOSERS", "FINALS", etc.
+  
+  // Optional judge for the match
+  judge        User?      @relation("JudgedMatches", fields: [judgeId], references: [id])
+  judgeId      String?
+  
+  @@index([tournamentId])
+  @@index([teamAId])
+  @@index([teamBId])
+  @@index([participantAId])
+  @@index([participantBId])
+  @@index([judgeId])
+}
+ 
+ 
+
+ 
+ 
 
 // Represents a single tournament event
  model Tournament {
@@ -55,6 +119,7 @@ model User {
   maxParticipants     Int?
   teamSize            Int?
   isTeamBased         Boolean          @default(false)
+    matches      Match[]
 
   // Relationships
   participants        TournamentParticipant[] @relation("TournamentParticipants")
@@ -82,7 +147,8 @@ model TournamentParticipant {
   // Link to the Team the participant belongs to (optional, might join later)
   team         Team?      @relation("TeamMembers", fields: [teamId], references: [id])
   teamId       String?
-
+  matchesAsParticipantA Match[] @relation("ParticipantAMatches")
+  matchesAsParticipantB Match[] @relation("ParticipantBMatches")
   // Is this participant the captain of their team?
   // We link the captain directly from the Team model for uniqueness.
   // This field could be added for quick checks if needed, but might be redundant.
@@ -111,7 +177,8 @@ model Team {
   // Note: The captain MUST be a participant in the same tournament.
   captain      TournamentParticipant @relation("TeamCaptain", fields: [captainId], references: [id])
   captainId    String                @unique // A team has only one captain
-
+  matchesAsTeamA Match[]  @relation("TeamAMatches")
+  matchesAsTeamB Match[]  @relation("TeamBMatches")
   // The members of this team (participants)
   members      TournamentParticipant[] @relation("TeamMembers")
 

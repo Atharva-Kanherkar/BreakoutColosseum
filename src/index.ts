@@ -5,7 +5,6 @@ import path from "path";
 import authRoutes from "./modules/auth/routes";
 import userRoutes from "./modules/user/routes";
 import tournamentRoutes from "./modules/tournament/routes";
-import matchRoutes from "./modules/match/routes";
 import teamRoutes from "./modules/team/routes"; // Add this line
 import swaggerUi from 'swagger-ui-express';
 import { specs } from './utils/swagger';
@@ -25,7 +24,6 @@ app.use(express.json());
 app.use('/auth', authLimiter, authRoutes);
 app.use('/users', standardLimiter, userRoutes);
 app.use('/tournaments', standardLimiter, tournamentRoutes);
-app.use('/matches', standardLimiter, matchRoutes);
 app.use('/teams', standardLimiter, teamRoutes); // Add this line
 
 app.get("/", (req, res) => {
