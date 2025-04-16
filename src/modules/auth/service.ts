@@ -1,7 +1,7 @@
 import { supabase } from  "../../lib/supabase";
 import prisma from "../../lib/db"
 
-export async function registerUser(email: string, password: string) {
+export async function registerUser(email: string, password: string, name?: string) {
   // Create user in Supabase
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
@@ -13,20 +13,21 @@ export async function registerUser(email: string, password: string) {
   }
 
   if (!authData.user) {
-    throw new Error('Failed to create user');
+    throw new Error('Failed to create user in authentication system');
   }
 
-  // Create user in our database
+  // Create user in our database - note no role field
   const user = await prisma.user.create({
     data: {
       email,
+      username: name || email.split('@')[0], 
+      passwordHash: "[PLACEHOLDER]", // In reality, you'd store a hash from bcrypt
       supabaseId: authData.user.id,
     },
   });
 
   return { message: 'User registered successfully', userId: user.id };
 }
-
 export async function loginUser(email: string, password: string) {
   // Sign in with Supabase
   const { data, error } = await supabase.auth.signInWithPassword({

@@ -18,8 +18,6 @@ export const updateProfile = async (req: Request, res: Response) => {
     const { username, displayName, bio, avatar } = req.body;
     const updatedUser = await userService.updateUser(userId, {
       username,
-      displayName,
-      bio,
       avatar
     });
     res.json(updatedUser);
@@ -59,15 +57,4 @@ export const getUserById = async (req: Request, res: Response) => {
   }
 };
 
-export const updateUserRole = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { role } = req.body;
-    
-    const updatedUser = await userService.updateUserRole(id, role);
-    res.json(updatedUser);
-  } catch (error: any) {
-    console.error('Error updating user role:', error);
-    res.status(400).json({ error: error.message || 'Failed to update user role' });
-  }
-};
+ 

@@ -1,66 +1,158 @@
 import { Request, Response, NextFunction } from 'express';
-import { TournamentFormat, ParticipantType, Visibility } from '@prisma/client';
+import { TournamentStatus } from '@prisma/client';
+import { TournamentFormat } from './types';
+
+const validTournamentStatuses: TournamentStatus[] = [
+  'DRAFT', 
+  'REGISTRATION_OPEN', 
+  'REGISTRATION_CLOSED', 
+  'ONGOING', 
+  'COMPLETED', 
+  'CANCELLED'
+];
+
+const validTournamentFormats: string[] = [
+  'SINGLE_ELIMINATION', 
+  'DOUBLE_ELIMINATION', 
+  'ROUND_ROBIN', 
+  'SWISS', 
+  'CUSTOM'
+];
 
 export const validateCreateTournament = (req: Request, res: Response, next: NextFunction) => {
   const { 
-    title, format, startDate, registrationEnd, visibility, participantType
+    name, 
+    description, 
+    startDate, 
+    endDate, 
+    format, 
+    maxParticipants, 
+    minParticipants,
+    teamSize,
+    isTeamBased,
+    registrationDeadline,
+    status
   } = req.body;
   
   // Required fields
-  if (!title) {
-     res.status(400).json({ error: 'Title is required' });
+  if (!name || typeof name !== 'string') {
+    res.status(400).json({ error: 'Tournament name is required' });
+    return;
   }
   
-  if (!format) {
-     res.status(400).json({ error: 'Tournament format is required' });
+  if (name.length < 3 || name.length > 100) {
+    res.status(400).json({ error: 'Tournament name must be between 3 and 100 characters' });
+    return;
   }
   
-  if (!Object.values(TournamentFormat).includes(format)) {
-     res.status(400).json({ 
-      error: `Format must be one of: ${Object.values(TournamentFormat).join(', ')}` 
-    });
+  // Optional description
+  if (description !== undefined && description !== null && typeof description !== 'string') {
+    res.status(400).json({ error: 'Tournament description must be a string' });
+    return;
   }
   
-  if (!startDate) {
-     res.status(400).json({ error: 'Start date is required' });
-  }
-  
-  if (!registrationEnd) {
-     res.status(400).json({ error: 'Registration end date is required' });
-  }
-  
-  // Optional fields with validation
-  if (visibility && !Object.values(Visibility).includes(visibility)) {
-     res.status(400).json({ 
-      error: `Visibility must be one of: ${Object.values(Visibility).join(', ')}` 
-    });
-  }
-  
-  if (participantType && !Object.values(ParticipantType).includes(participantType)) {
-     res.status(400).json({ 
-      error: `Participant type must be one of: ${Object.values(ParticipantType).join(', ')}` 
-    });
-  }
-  
-  // Date validation
-  try {
+  // Date validations
+  if (startDate) {
     const startDateObj = new Date(startDate);
-    const registrationEndObj = new Date(registrationEnd);
-    const now = new Date();
-    
-    if (startDateObj < now) {
-       res.status(400).json({ error: 'Start date must be in the future' });
+    if (isNaN(startDateObj.getTime())) {
+      res.status(400).json({ error: 'Invalid start date format' });
+      return;
     }
-    
-    if (registrationEndObj < now) {
-       res.status(400).json({ error: 'Registration end date must be in the future' });
+  }
+  
+  if (endDate) {
+    const endDateObj = new Date(endDate);
+    if (isNaN(endDateObj.getTime())) {
+      res.status(400).json({ error: 'Invalid end date format' });
+      return;
     }
-    
-    if (registrationEndObj > startDateObj) {
-       res.status(400).json({ error: 'Registration must end before tournament starts' });
+  }
+  
+  if (registrationDeadline) {
+    const deadlineObj = new Date(registrationDeadline);
+    if (isNaN(deadlineObj.getTime())) {
+      res.status(400).json({ error: 'Invalid registration deadline format' });
+      return;
     }
-  } catch (error) {
-     res.status(400).json({ error: 'Invalid date format' });
+  }
+  
+  // Check date relationships
+  if (startDate && endDate) {
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDate);
+    
+    if (startDateObj > endDateObj) {
+      res.status(400).json({ error: 'End date must be after start date' });
+      return;
+    }
+  }
+  
+  if (startDate && registrationDeadline) {
+    const startDateObj = new Date(startDate);
+    const deadlineObj = new Date(registrationDeadline);
+    
+    if (deadlineObj > startDateObj) {
+      res.status(400).json({ error: 'Registration deadline must be before start date' });
+      return;
+    }
+  }
+  
+  // Format validation
+  if (format && !validTournamentFormats.includes(format)) {
+    res.status(400).json({ 
+      error: `Invalid tournament format. Must be one of: ${validTournamentFormats.join(', ')}` 
+    });
+    return;
+  }
+  
+  // Status validation
+  if (status && !validTournamentStatuses.includes(status as TournamentStatus)) {
+    res.status(400).json({ 
+      error: `Invalid tournament status. Must be one of: ${validTournamentStatuses.join(', ')}` 
+    });
+    return;
+  }
+  
+  // Participant counts
+  if (maxParticipants !== undefined) {
+    const max = Number(maxParticipants);
+    if (isNaN(max) || max < 2) {
+      res.status(400).json({ error: 'Max participants must be at least 2' });
+      return;
+    }
+  }
+  
+  if (minParticipants !== undefined) {
+    const min = Number(minParticipants);
+    if (isNaN(min) || min < 2) {
+      res.status(400).json({ error: 'Min participants must be at least 2' });
+      return;
+    }
+  }
+  
+  if (minParticipants !== undefined && maxParticipants !== undefined) {
+    const min = Number(minParticipants);
+    const max = Number(maxParticipants);
+    
+    if (min > max) {
+      res.status(400).json({ error: 'Min participants cannot be greater than max participants' });
+      return;
+    }
+  }
+  
+  // Team size validation
+  if (teamSize !== undefined) {
+    const size = Number(teamSize);
+    if (isNaN(size) || size < 1) {
+      res.status(400).json({ error: 'Team size must be at least 1' });
+      return;
+    }
+  }
+  
+  // IsTeamBased validation
+  if (isTeamBased !== undefined && typeof isTeamBased !== 'boolean') {
+    res.status(400).json({ error: 'isTeamBased must be a boolean' });
+    return;
   }
   
   next();
@@ -68,56 +160,149 @@ export const validateCreateTournament = (req: Request, res: Response, next: Next
 
 export const validateUpdateTournament = (req: Request, res: Response, next: NextFunction) => {
   const { 
-    format, startDate, registrationEnd, visibility, participantType, status, endDate
+    name, 
+    description, 
+    startDate, 
+    endDate, 
+    format, 
+    maxParticipants, 
+    minParticipants,
+    teamSize,
+    isTeamBased,
+    registrationDeadline
   } = req.body;
   
-  // Optional fields with validation
-  if (format && !Object.values(TournamentFormat).includes(format)) {
-     res.status(400).json({ 
-      error: `Format must be one of: ${Object.values(TournamentFormat).join(', ')}` 
-    });
-  }
-  
-  if (visibility && !Object.values(Visibility).includes(visibility)) {
-     res.status(400).json({ 
-      error: `Visibility must be one of: ${Object.values(Visibility).join(', ')}` 
-    });
-  }
-  
-  if (participantType && !Object.values(ParticipantType).includes(participantType)) {
-     res.status(400).json({ 
-      error: `Participant type must be one of: ${Object.values(ParticipantType).join(', ')}` 
-    });
-  }
-  
-  // Date validation
-  try {
-    if (startDate) {
-      const startDateObj = new Date(startDate);
-      const now = new Date();
-      
-      if (startDateObj < now) {
-         res.status(400).json({ error: 'Start date must be in the future' });
-      }
-      
-      if (registrationEnd) {
-        const registrationEndObj = new Date(registrationEnd);
-        
-        if (registrationEndObj > startDateObj) {
-           res.status(400).json({ error: 'Registration must end before tournament starts' });
-        }
-      }
-      
-      if (endDate) {
-        const endDateObj = new Date(endDate);
-        
-        if (endDateObj < startDateObj) {
-           res.status(400).json({ error: 'End date must be after start date' });
-        }
-      }
+  // Optional name
+  if (name !== undefined) {
+    if (typeof name !== 'string') {
+      res.status(400).json({ error: 'Tournament name must be a string' });
+      return;
     }
-  } catch (error) {
-     res.status(400).json({ error: 'Invalid date format' });
+    
+    if (name.length < 3 || name.length > 100) {
+      res.status(400).json({ error: 'Tournament name must be between 3 and 100 characters' });
+      return;
+    }
+  }
+  
+  // Optional description
+  if (description !== undefined && description !== null && typeof description !== 'string') {
+    res.status(400).json({ error: 'Tournament description must be a string or null' });
+    return;
+  }
+  
+  // Date validations
+  if (startDate !== undefined && startDate !== null) {
+    const startDateObj = new Date(startDate);
+    if (isNaN(startDateObj.getTime())) {
+      res.status(400).json({ error: 'Invalid start date format' });
+      return;
+    }
+  }
+  
+  if (endDate !== undefined && endDate !== null) {
+    const endDateObj = new Date(endDate);
+    if (isNaN(endDateObj.getTime())) {
+      res.status(400).json({ error: 'Invalid end date format' });
+      return;
+    }
+  }
+  
+  if (registrationDeadline !== undefined && registrationDeadline !== null) {
+    const deadlineObj = new Date(registrationDeadline);
+    if (isNaN(deadlineObj.getTime())) {
+      res.status(400).json({ error: 'Invalid registration deadline format' });
+      return;
+    }
+  }
+  
+  // Check date relationships
+  if (startDate && endDate) {
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDate);
+    
+    if (startDateObj > endDateObj) {
+      res.status(400).json({ error: 'End date must be after start date' });
+      return;
+    }
+  }
+  
+  if (startDate && registrationDeadline) {
+    const startDateObj = new Date(startDate);
+    const deadlineObj = new Date(registrationDeadline);
+    
+    if (deadlineObj > startDateObj) {
+      res.status(400).json({ error: 'Registration deadline must be before start date' });
+      return;
+    }
+  }
+  
+  // Format validation
+  if (format !== undefined && !validTournamentFormats.includes(format)) {
+    res.status(400).json({ 
+      error: `Invalid tournament format. Must be one of: ${validTournamentFormats.join(', ')}` 
+    });
+    return;
+  }
+  
+  // Participant counts
+  if (maxParticipants !== undefined) {
+    const max = Number(maxParticipants);
+    if (isNaN(max) || max < 2) {
+      res.status(400).json({ error: 'Max participants must be at least 2' });
+      return;
+    }
+  }
+  
+  if (minParticipants !== undefined) {
+    const min = Number(minParticipants);
+    if (isNaN(min) || min < 2) {
+      res.status(400).json({ error: 'Min participants must be at least 2' });
+      return;
+    }
+  }
+  
+  if (minParticipants !== undefined && maxParticipants !== undefined) {
+    const min = Number(minParticipants);
+    const max = Number(maxParticipants);
+    
+    if (min > max) {
+      res.status(400).json({ error: 'Min participants cannot be greater than max participants' });
+      return;
+    }
+  }
+  
+  // Team size validation
+  if (teamSize !== undefined) {
+    const size = Number(teamSize);
+    if (isNaN(size) || size < 1) {
+      res.status(400).json({ error: 'Team size must be at least 1' });
+      return;
+    }
+  }
+  
+  // IsTeamBased validation
+  if (isTeamBased !== undefined && typeof isTeamBased !== 'boolean') {
+    res.status(400).json({ error: 'isTeamBased must be a boolean' });
+    return;
+  }
+  
+  next();
+};
+
+export const validateTournamentStatus = (req: Request, res: Response, next: NextFunction) => {
+  const { status } = req.body;
+  
+  if (!status) {
+    res.status(400).json({ error: 'Tournament status is required' });
+    return;
+  }
+  
+  if (!validTournamentStatuses.includes(status as TournamentStatus)) {
+    res.status(400).json({ 
+      error: `Invalid tournament status. Must be one of: ${validTournamentStatuses.join(', ')}` 
+    });
+    return;
   }
   
   next();
@@ -126,11 +311,10 @@ export const validateUpdateTournament = (req: Request, res: Response, next: Next
 export const validateRegistration = (req: Request, res: Response, next: NextFunction) => {
   const { teamId } = req.body;
   
-  // If it's a team registration, validate teamId
-  if (req.path.endsWith('/team')) {
-    if (!teamId) {
-       res.status(400).json({ error: 'Team ID is required' });
-    }
+  // TeamId is optional, but if provided must be a string
+  if (teamId !== undefined && typeof teamId !== 'string') {
+    res.status(400).json({ error: 'Team ID must be a string' });
+    return;
   }
   
   next();

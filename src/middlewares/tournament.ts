@@ -1,27 +1,29 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from "../lib/db";
 
-export const requireTournamentOwner = async (req: Request, res: Response, next: NextFunction) => {
+ 
+
+export const requireTournamentHost = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const { id: tournamentId } = req.params;
     const userId = req.user!.id;
     
     const tournament = await prisma.tournament.findUnique({
-      where: { id },
-      select: { organizerId: true }
+      where: { 
+        id: tournamentId,
+        hostId: userId // Check if user is the host
+      }
     });
     
     if (!tournament) {
-        res.status(404).json({ error: 'Tournament not found' });
-    }
-    
-    if (tournament?.organizerId !== userId && req.user!.role !== 'ADMIN') {
-        res.status(403).json({ error: 'You do not have permission to modify this tournament' });
+      return res.status(403).json({ error: 'You are not authorized to manage this tournament' });
     }
     
     next();
   } catch (error) {
-    console.error('Error in requireTournamentOwner middleware:', error);
+    console.error('Error in requireTournamentHost middleware:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };
+
+// For admin functionality, you could add a separate isAdmin flag to the User model

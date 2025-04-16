@@ -1,31 +1,13 @@
 import { Request, Response } from 'express';
-import * as tournamentService from "./service"
-import { TournamentFormat, ParticipantType, Visibility } from '@prisma/client';
+import * as tournamentService from './service';
+import { TournamentStatus } from '@prisma/client';
 
 export const createTournament = async (req: Request, res: Response) => {
   try {
-    const { 
-      title, description, format, startDate, endDate, registrationEnd,
-      maxParticipants, prizePool, entryFee, rules, visibility, participantType
-    } = req.body;
+    const userId = req.user!.id;
+    const tournamentData = req.body;
     
-    const organizerId = req.user!.id;
-    
-    const tournament = await tournamentService.createTournament({
-      title,
-      description,
-      format: format as TournamentFormat,
-      startDate: new Date(startDate),
-      endDate: endDate ? new Date(endDate) : undefined,
-      registrationEnd: new Date(registrationEnd),
-      maxParticipants,
-      prizePool,
-      entryFee,
-      rules,
-      visibility: visibility as Visibility,
-      participantType: participantType as ParticipantType,
-      organizerId
-    });
+    const tournament = await tournamentService.createTournament(userId, tournamentData);
     
     res.status(201).json(tournament);
   } catch (error: any) {
@@ -38,13 +20,14 @@ export const getTournaments = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const status = req.query.status as string;
     const search = req.query.search as string;
+    const status = req.query.status as TournamentStatus;
     
-    const tournaments = await tournamentService.getTournaments(page, limit, status, search);
+    const tournaments = await tournamentService.getTournaments(page, limit, search, status);
+    
     res.json(tournaments);
   } catch (error: any) {
-    console.error('Error getting tournaments:', error);
+    console.error('Error fetching tournaments:', error);
     res.status(500).json({ error: error.message || 'Failed to fetch tournaments' });
   }
 };
@@ -55,12 +38,12 @@ export const getTournamentById = async (req: Request, res: Response) => {
     const tournament = await tournamentService.getTournamentById(id);
     
     if (!tournament) {
-        res.status(404).json({ error: 'Tournament not found' });
+      return res.status(404).json({ error: 'Tournament not found' });
     }
     
     res.json(tournament);
   } catch (error: any) {
-    console.error('Error getting tournament by ID:', error);
+    console.error('Error fetching tournament:', error);
     res.status(500).json({ error: error.message || 'Failed to fetch tournament' });
   }
 };
@@ -68,29 +51,10 @@ export const getTournamentById = async (req: Request, res: Response) => {
 export const updateTournament = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { 
-      title, description, format, startDate, endDate, registrationEnd,
-      maxParticipants, prizePool, entryFee, rules, visibility, participantType, status
-    } = req.body;
+    const userId = req.user!.id;
+    const tournamentData = req.body;
     
-    const tournament = await tournamentService.updateTournament(
-      id, 
-      {
-        title,
-        description,
-        format,
-        startDate: startDate ? new Date(startDate) : undefined,
-        endDate: endDate ? new Date(endDate) : undefined,
-        registrationEnd: registrationEnd ? new Date(registrationEnd) : undefined,
-        maxParticipants,
-        prizePool,
-        entryFee,
-        rules,
-        visibility,
-        participantType,
-        status
-      }
-    );
+    const tournament = await tournamentService.updateTournament(id, userId, tournamentData);
     
     res.json(tournament);
   } catch (error: any) {
@@ -102,7 +66,10 @@ export const updateTournament = async (req: Request, res: Response) => {
 export const deleteTournament = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    await tournamentService.deleteTournament(id);
+    const userId = req.user!.id;
+    
+    await tournamentService.deleteTournament(id, userId);
+    
     res.json({ message: 'Tournament deleted successfully' });
   } catch (error: any) {
     console.error('Error deleting tournament:', error);
@@ -110,24 +77,29 @@ export const deleteTournament = async (req: Request, res: Response) => {
   }
 };
 
-export const startTournament = async (req: Request, res: Response) => {
+export const updateTournamentStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const tournament = await tournamentService.startTournament(id);
+    const { status } = req.body;
+    const userId = req.user!.id;
+    
+    const tournament = await tournamentService.updateTournamentStatus(id, userId, status);
+    
     res.json(tournament);
   } catch (error: any) {
-    console.error('Error starting tournament:', error);
-    res.status(400).json({ error: error.message || 'Failed to start tournament' });
+    console.error('Error updating tournament status:', error);
+    res.status(400).json({ error: error.message || 'Failed to update tournament status' });
   }
 };
 
 export const registerParticipant = async (req: Request, res: Response) => {
   try {
-    const { id: tournamentId } = req.params;
+    const { id } = req.params;
     const userId = req.user!.id;
-    const { additionalInfo } = req.body;
+    const { teamId } = req.body; // Optional: If registering as a team
     
-    const registration = await tournamentService.registerParticipant(tournamentId, userId, additionalInfo);
+    const registration = await tournamentService.registerParticipant(id, userId, teamId);
+    
     res.status(201).json(registration);
   } catch (error: any) {
     console.error('Error registering for tournament:', error);
@@ -135,27 +107,119 @@ export const registerParticipant = async (req: Request, res: Response) => {
   }
 };
 
-export const registerTeam = async (req: Request, res: Response) => {
+export const unregisterParticipant = async (req: Request, res: Response) => {
   try {
-    const { id: tournamentId } = req.params;
+    const { id } = req.params;
     const userId = req.user!.id;
-    const { teamId, additionalInfo } = req.body;
     
-    const registration = await tournamentService.registerTeam(tournamentId, teamId, userId, additionalInfo);
-    res.status(201).json(registration);
+    await tournamentService.unregisterParticipant(id, userId);
+    
+    res.json({ message: 'Successfully unregistered from tournament' });
   } catch (error: any) {
-    console.error('Error registering team for tournament:', error);
-    res.status(400).json({ error: error.message || 'Failed to register team for tournament' });
+    console.error('Error unregistering from tournament:', error);
+    res.status(400).json({ error: error.message || 'Failed to unregister from tournament' });
+  }
+};
+
+export const spectateTournament = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user!.id;
+    
+    await tournamentService.addSpectator(id, userId);
+    
+    res.json({ message: 'Now spectating tournament' });
+  } catch (error: any) {
+    console.error('Error spectating tournament:', error);
+    res.status(400).json({ error: error.message || 'Failed to spectate tournament' });
+  }
+};
+
+export const unspectateTournament = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user!.id;
+    
+    await tournamentService.removeSpectator(id, userId);
+    
+    res.json({ message: 'No longer spectating tournament' });
+  } catch (error: any) {
+    console.error('Error unspectating tournament:', error);
+    res.status(400).json({ error: error.message || 'Failed to unspectate tournament' });
   }
 };
 
 export const getTournamentParticipants = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const participants = await tournamentService.getTournamentParticipants(id);
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    
+    const participants = await tournamentService.getTournamentParticipants(id, page, limit);
+    
     res.json(participants);
   } catch (error: any) {
-    console.error('Error getting tournament participants:', error);
+    console.error('Error fetching tournament participants:', error);
     res.status(500).json({ error: error.message || 'Failed to fetch tournament participants' });
+  }
+};
+
+export const getTournamentTeams = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    
+    const teams = await tournamentService.getTournamentTeams(id, page, limit);
+    
+    res.json(teams);
+  } catch (error: any) {
+    console.error('Error fetching tournament teams:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch tournament teams' });
+  }
+};
+
+export const getHostedTournaments = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    
+    const tournaments = await tournamentService.getUserHostedTournaments(userId, page, limit);
+    
+    res.json(tournaments);
+  } catch (error: any) {
+    console.error('Error fetching hosted tournaments:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch hosted tournaments' });
+  }
+};
+
+export const getParticipatingTournaments = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    
+    const tournaments = await tournamentService.getUserParticipatingTournaments(userId, page, limit);
+    
+    res.json(tournaments);
+  } catch (error: any) {
+    console.error('Error fetching participating tournaments:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch participating tournaments' });
+  }
+};
+
+export const getSpectatedTournaments = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    
+    const tournaments = await tournamentService.getUserSpectatedTournaments(userId, page, limit);
+    
+    res.json(tournaments);
+  } catch (error: any) {
+    console.error('Error fetching spectated tournaments:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch spectated tournaments' });
   }
 };

@@ -1,11 +1,8 @@
 import prisma from '../../lib/db';
-import { UserRole } from '@prisma/client';
 
 interface UpdateUserData {
   username?: string;
-  displayName?: string;
-  bio?: string;
-  avatar?: string;
+  avatar?: string;   // Note: add this to your schema
 }
 
 export const getUserById = async (id: string) => {
@@ -15,50 +12,114 @@ export const getUserById = async (id: string) => {
       id: true,
       email: true,
       username: true,
-      displayName: true,
-      avatar: true,
-      bio: true,
-      role: true,
+      avatar: true,        // Note: add this to your schema
       createdAt: true,
       updatedAt: true,
-      // Exclude sensitive fields like supabaseId
-    } as const,
+      // Get hosted tournaments
+      hostedTournaments: {
+        select: { id: true },
+        take: 3
+      },
+      // Get participations
+      participation: {
+        select: { id: true, tournamentId: true },
+        take: 3
+      },
+      // Get spectated tournaments through the many-to-many relation
+      spectatedTournaments: {
+        select: { id: true },
+        take: 3
+      }
+    }
   });
   
   if (!user) {
     throw new Error('User not found');
   }
   
-  return user;
+  // Transform the result to include role indicators
+  return {
+    id: user.id,
+    email: user.email,
+    username: user.username,
+    avatar: user.avatar,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    // Add role indicators
+    isHost: user.hostedTournaments.length > 0,
+    isParticipant: user.participation.length > 0,
+    isSpectator: user.spectatedTournaments.length > 0,
+    // Include some recent tournament data (optional)
+    recentTournaments: {
+      hosted: user.hostedTournaments.map(t => t.id),
+      participating: user.participation.map(p => p.tournamentId),
+      spectating: user.spectatedTournaments.map(t => t.id)
+    }
+  };
 };
 
 export const updateUser = async (id: string, data: UpdateUserData) => {
   // Check if username is already taken if it's being updated
   if (data.username) {
-    const existingUser = await prisma.user.findUnique({
-      where: { username: data.username }
+    const existingUser = await prisma.user.findFirst({
+      where: { 
+        username: data.username,
+        id: { not: id } 
+      }
     });
     
-    if (existingUser && existingUser.id !== id) {
+    if (existingUser) {
       throw new Error('Username is already taken');
     }
   }
   
-  return prisma.user.update({
+  const user = await prisma.user.update({
     where: { id },
     data,
     select: {
       id: true,
       email: true,
       username: true,
-      displayName: true,
       avatar: true,
-      bio: true,
-      role: true,
       createdAt: true,
       updatedAt: true,
+      // Get hosted tournaments
+      hostedTournaments: {
+        select: { id: true },
+        take: 3
+      },
+      // Get participations
+      participation: {
+        select: { id: true, tournamentId: true },
+        take: 3
+      },
+      // Get spectated tournaments
+      spectatedTournaments: {
+        select: { id: true },
+        take: 3
+      }
     }
   });
+  
+  // Transform the result to include role indicators
+  return {
+    id: user.id,
+    email: user.email,
+    username: user.username,
+    avatar: user.avatar,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    // Add role indicators
+    isHost: user.hostedTournaments.length > 0,
+    isParticipant: user.participation.length > 0,
+    isSpectator: user.spectatedTournaments.length > 0,
+    // Include some recent tournament data (optional)
+    recentTournaments: {
+      hosted: user.hostedTournaments.map(t => t.id),
+      participating: user.participation.map(p => p.tournamentId),
+      spectating: user.spectatedTournaments.map(t => t.id)
+    }
+  };
 };
 
 export const getUsers = async (page = 1, limit = 10, search?: string) => {
@@ -69,8 +130,7 @@ export const getUsers = async (page = 1, limit = 10, search?: string) => {
     whereClause = {
       OR: [
         { username: { contains: search, mode: 'insensitive' } },
-        { displayName: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } }
       ]
     };
   }
@@ -81,10 +141,17 @@ export const getUsers = async (page = 1, limit = 10, search?: string) => {
       select: {
         id: true,
         username: true,
-        displayName: true,
+        email: true,
         avatar: true,
-        role: true,
         createdAt: true,
+        // Include counts to determine roles
+        _count: {
+          select: {
+            hostedTournaments: true,
+            participation: true,
+            spectatedTournaments: true
+          }
+        }
       },
       skip,
       take: limit,
@@ -93,8 +160,21 @@ export const getUsers = async (page = 1, limit = 10, search?: string) => {
     prisma.user.count({ where: whereClause }),
   ]);
   
+  // Transform users to include role indicators
+  const transformedUsers = users.map(user => ({
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    avatar: user.avatar,
+    createdAt: user.createdAt,
+    // Add role indicators based on relationship counts
+    isHost: user._count.hostedTournaments > 0,
+    isParticipant: user._count.participation > 0,
+    isSpectator: user._count.spectatedTournaments > 0
+  }));
+  
   return {
-    users,
+    users: transformedUsers,
     pagination: {
       total: totalCount,
       page,
@@ -104,20 +184,4 @@ export const getUsers = async (page = 1, limit = 10, search?: string) => {
   };
 };
 
-export const updateUserRole = async (id: string, role: UserRole) => {
-  // Validate role is a valid enum value
-  if (!Object.values(UserRole).includes(role)) {
-    throw new Error('Invalid role');
-  }
-  
-  return prisma.user.update({
-    where: { id },
-    data: { role },
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      role: true,
-    }
-  });
-};
+ 

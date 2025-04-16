@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import * as userController from './controller';
 import { authenticate } from '../../middlewares/auth';
-import { requireAdmin } from '../../middlewares/roles';
-import { validateUpdateProfile, validateUserRole } from './validators';
+import { isSystemAdmin } from '../../middlewares/permissions';
+import { validateUpdateProfile } from './validators';
 
 const router = Router();
 
@@ -12,9 +12,10 @@ const router = Router();
 router.get('/profile', authenticate, userController.getProfile);
 router.put('/profile', authenticate, validateUpdateProfile, userController.updateProfile);
 
-// Admin routes - require admin role
-router.get('/users', authenticate, requireAdmin, userController.getUsers);
-router.get('/users/:id', authenticate, requireAdmin, userController.getUserById);
-router.put('/users/:id/role', authenticate, requireAdmin, validateUserRole, userController.updateUserRole);
+ 
 
+// Admin routes - system admins only (special flag in user model)
+router.get('/users', authenticate, isSystemAdmin, userController.getUsers);
+router.get('/users/:id', authenticate, isSystemAdmin, userController.getUserById);
+  
 export default router;

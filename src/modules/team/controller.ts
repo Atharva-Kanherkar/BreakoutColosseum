@@ -1,17 +1,16 @@
 import { Request, Response } from 'express';
 import * as teamService from './service';
-import { TeamRole } from '@prisma/client';
+import { TournamentParticipant } from '@prisma/client';
 
 export const createTeam = async (req: Request, res: Response) => {
   try {
-    const { name, tag, logo } = req.body;
-    const creatorId = req.user!.id;
+    const { name, tag, logo, tournamentId } = req.body;
+    const userId = req.user!.id;
     
-    const team = await teamService.createTeam({
+    const team = await teamService.createTeam(userId, tournamentId, {
       name,
       tag,
-      logo,
-      creatorId
+      logo
     });
     
     res.status(201).json(team);
@@ -26,8 +25,9 @@ export const getTeams = async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = req.query.search as string;
+    const tournamentId = req.query.tournamentId as string;
     
-    const teams = await teamService.getTeams(page, limit, search);
+    const teams = await teamService.getTeams(page, limit, search, tournamentId);
     res.json(teams);
   } catch (error: any) {
     console.error('Error getting teams:', error);
@@ -85,37 +85,37 @@ export const deleteTeam = async (req: Request, res: Response) => {
 
 export const inviteMember = async (req: Request, res: Response) => {
   try {
-    const { id: teamId } = req.params;
-    const { email, role } = req.body;
+    const { id } = req.params;
+    const { userId } = req.body;
     const inviterId = req.user!.id;
     
-    const invitation = await teamService.inviteMember(teamId, inviterId, email, role as TeamRole);
-    res.status(201).json(invitation);
+    const member = await teamService.addMemberToTeam(id, userId, inviterId);
+    res.status(201).json(member);
   } catch (error: any) {
-    console.error('Error inviting team member:', error);
-    res.status(400).json({ error: error.message || 'Failed to invite team member' });
+    console.error('Error adding team member:', error);
+    res.status(400).json({ error: error.message || 'Failed to add team member' });
   }
 };
 
-export const acceptInvitation = async (req: Request, res: Response) => {
+export const joinTeam = async (req: Request, res: Response) => {
   try {
-    const { teamId } = req.params;
+    const { id } = req.params;
     const userId = req.user!.id;
     
-    const membership = await teamService.acceptInvitation(teamId, userId);
+    const membership = await teamService.joinTeam(id, userId);
     res.json(membership);
   } catch (error: any) {
-    console.error('Error accepting team invitation:', error);
-    res.status(400).json({ error: error.message || 'Failed to accept team invitation' });
+    console.error('Error joining team:', error);
+    res.status(400).json({ error: error.message || 'Failed to join team' });
   }
 };
 
 export const removeMember = async (req: Request, res: Response) => {
   try {
-    const { teamId, memberId } = req.params;
+    const { id, memberId } = req.params;
     const requesterId = req.user!.id;
     
-    await teamService.removeMember(teamId, memberId, requesterId);
+    await teamService.removeMember(id, memberId as string, requesterId);
     res.json({ message: 'Team member removed successfully' });
   } catch (error: any) {
     console.error('Error removing team member:', error);
@@ -125,21 +125,15 @@ export const removeMember = async (req: Request, res: Response) => {
 
 export const updateMemberRole = async (req: Request, res: Response) => {
   try {
-    const { teamId, memberId } = req.params;
+    const { id, memberId } = req.params;
     const { role } = req.body;
     const requesterId = req.user!.id;
     
-    const membership = await teamService.updateMemberRole(
-      teamId, 
-      memberId, 
-      requesterId, 
-      role as TeamRole
-    );
-    
+    const membership = await teamService.updateMemberRole(id, memberId as string, requesterId, role);
     res.json(membership);
   } catch (error: any) {
-    console.error('Error updating team member role:', error);
-    res.status(400).json({ error: error.message || 'Failed to update team member role' });
+    console.error('Error updating member role:', error);
+    res.status(400).json({ error: error.message || 'Failed to update member role' });
   }
 };
 
@@ -157,10 +151,10 @@ export const getMyTeams = async (req: Request, res: Response) => {
 
 export const leaveTeam = async (req: Request, res: Response) => {
   try {
-    const { teamId } = req.params;
+    const { id } = req.params;
     const userId = req.user!.id;
     
-    await teamService.leaveTeam(teamId, userId);
+    await teamService.leaveTeam(id, userId);
     res.json({ message: 'Successfully left team' });
   } catch (error: any) {
     console.error('Error leaving team:', error);

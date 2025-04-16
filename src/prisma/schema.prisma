@@ -1,4 +1,4 @@
-datasource db {
+ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
@@ -7,176 +7,116 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model User {
-  id                 String               @id @default(uuid())
-  email              String               @unique
-  username           String?              @unique
-  displayName        String?
-  avatar             String?
-  role               UserRole             @default(PLAYER)
-  bio                String?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  supabaseId         String               @unique
-  
-  // Relations
-  organizedTournaments Tournament[]        @relation("TournamentOrganizer")
-  playerParticipations Participation[]
-  teams              TeamMember[]
-  createdTeams       Team[]               @relation("TeamCreator")
-  matchesJudged      Match[]              @relation("MatchJudge")
-}
-
-enum UserRole {
-  PLAYER
-  ORGANIZER
-  ADMIN
-}
-
-model Tournament {
-  id                String             @id @default(uuid())
-  title             String
-  description       String?            @db.Text
-  format            TournamentFormat
-  status            TournamentStatus   @default(REGISTRATION)
-  maxParticipants   Int?
-  startDate         DateTime
-  endDate           DateTime?
-  registrationEnd   DateTime
-  prizePool         Decimal?           @db.Decimal(10, 2)
-  entryFee          Decimal?           @db.Decimal(10, 2)
-  rules             Json?
-  visibility        Visibility         @default(PUBLIC)
-  participantType   ParticipantType
-  organizerId       String
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  
-  // Relations
-  organizer         User               @relation("TournamentOrganizer", fields: [organizerId], references: [id])
-  matches           Match[]
-  participations    Participation[]
-}
-
-enum TournamentFormat {
-  SINGLE_ELIMINATION
-  DOUBLE_ELIMINATION
-  ROUND_ROBIN
-  SWISS
-  CUSTOM
-}
-
+ 
 enum TournamentStatus {
-  REGISTRATION
-  UPCOMING
+  DRAFT
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
   ONGOING
   COMPLETED
   CANCELLED
 }
 
-enum ParticipantType {
-  INDIVIDUAL
-  TEAM
+// Represents the registered user in the system
+model User {
+   id                   String                  @id @default(cuid())
+  email                String                  @unique
+  username             String?
+  passwordHash         String
+  avatar               String?                 // Add this field
+  bio                  String?                 // Add this field
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  supabaseId           String?                 @unique
+  isAdmin             Boolean                @default(false)
+  // Tournaments hosted by this user
+  hostedTournaments    Tournament[]            @relation("HostedTournaments")
+  // Tournaments this user is participating in (via TournamentParticipant)
+  participation        TournamentParticipant[] @relation("UserParticipants")
+  // Tournaments this user is spectating (Direct M2M relation)
+  spectatedTournaments Tournament[]            @relation("SpectatedTournaments")
 }
 
-enum Visibility {
-  PUBLIC
-  PRIVATE
-  UNLISTED
+// Represents a single tournament event
+ model Tournament {
+  id                  String           @id @default(cuid())
+  name                String
+  description         String?
+  startDate           DateTime?
+  endDate             DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  status              TournamentStatus @default(DRAFT)
+  format              String           @default("SINGLE_ELIMINATION") // Add this field
+  registrationDeadline DateTime?       // Add this field
+  host                User             @relation("HostedTournaments", fields: [hostId], references: [id])
+  hostId              String
+  minParticipants     Int?
+  maxParticipants     Int?
+  teamSize            Int?
+  isTeamBased         Boolean          @default(false)
+
+  // Relationships
+  participants        TournamentParticipant[] @relation("TournamentParticipants")
+  teams               Team[]
+  spectators          User[]                  @relation("SpectatedTournaments")
+
+  @@index([hostId])
 }
 
-model Participation {
-  id            String          @id @default(uuid())
-  tournamentId  String
-  userId        String?
-  teamId        String?
-  seed          Int?
-  registeredAt  DateTime        @default(now())
-  status        ParticipantStatus @default(REGISTERED)
-  
-  // Relations
-  tournament    Tournament      @relation(fields: [tournamentId], references: [id])
-  user          User?           @relation(fields: [userId], references: [id])
-  team          Team?           @relation(fields: [teamId], references: [id])
-  matchesAsParticipantA Match[] @relation("ParticipantA")
-  matchesAsParticipantB Match[] @relation("ParticipantB")
+// Represents a User's participation in a specific Tournament
+// This acts as a join table with potential extra info
+model TournamentParticipant {
+  id           String     @id @default(cuid())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-  @@unique([tournamentId, userId])
-  @@unique([tournamentId, teamId])
+  // Link to the User participating
+  user         User       @relation("UserParticipants", fields: [userId], references: [id])
+  userId       String
+
+  // Link to the Tournament they are participating in
+  tournament   Tournament @relation("TournamentParticipants", fields: [tournamentId], references: [id])
+  tournamentId String
+
+  // Link to the Team the participant belongs to (optional, might join later)
+  team         Team?      @relation("TeamMembers", fields: [teamId], references: [id])
+  teamId       String?
+
+  // Is this participant the captain of their team?
+  // We link the captain directly from the Team model for uniqueness.
+  // This field could be added for quick checks if needed, but might be redundant.
+  // isCaptain    Boolean    @default(false)
+
+  // Ensures a user can only participate once in the same tournament
+  @@unique([userId, tournamentId])
+  @@index([userId])
+  @@index([tournamentId])
+  @@index([teamId])
+  Team Team[] @relation("TeamCaptain")
 }
 
-enum ParticipantStatus {
-  REGISTERED
-  CHECKED_IN
-  ACTIVE
-  ELIMINATED
-  WINNER
-  DISQUALIFIED
-}
-
+// Represents a team within a specific tournament
 model Team {
-  id                String          @id @default(uuid())
-  name              String
-  tag               String?
-  logo              String?
-  creatorId         String
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  
-  // Relations
-  creator           User            @relation("TeamCreator", fields: [creatorId], references: [id])
-  members           TeamMember[]
-  participations    Participation[]
+  id           String   @id @default(cuid())
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // The tournament this team belongs to
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  tournamentId String
+
+  // The participant who is the captain of this team
+  // Note: The captain MUST be a participant in the same tournament.
+  captain      TournamentParticipant @relation("TeamCaptain", fields: [captainId], references: [id])
+  captainId    String                @unique // A team has only one captain
+
+  // The members of this team (participants)
+  members      TournamentParticipant[] @relation("TeamMembers")
+
+  // Ensures team names are unique within a given tournament
+  @@unique([name, tournamentId])
+  @@index([tournamentId])
 }
 
-model TeamMember {
-  id                String          @id @default(uuid())
-  teamId            String
-  userId            String
-  role              TeamRole        @default(MEMBER)
-  joinedAt          DateTime        @default(now())
-  
-  // Relations
-  team              Team            @relation(fields: [teamId], references: [id])
-  user              User            @relation(fields: [userId], references: [id])
-
-  @@unique([teamId, userId])
-}
-
-enum TeamRole {
-  OWNER
-  CAPTAIN
-  MEMBER
-}
-
-model Match {
-  id                String          @id @default(uuid())
-  tournamentId      String
-  round             Int
-  matchNumber       Int
-  participantAId    String?
-  participantBId    String?
-  startTime         DateTime?
-  endTime           DateTime?
-  status            MatchStatus     @default(PENDING)
-  result            Json?
-  dispute   Json?
-  judgeId           String?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  bracketSection    String? 
-  // Relations
-  tournament        Tournament      @relation(fields: [tournamentId], references: [id])
-  participantA      Participation?  @relation("ParticipantA", fields: [participantAId], references: [id])
-  participantB      Participation?  @relation("ParticipantB", fields: [participantBId], references: [id])
-  judge             User?           @relation("MatchJudge", fields: [judgeId], references: [id])
-}
-
-enum MatchStatus {
-  PENDING
-  SCHEDULED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-  DISPUTED
-}

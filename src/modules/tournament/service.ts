@@ -1,504 +1,780 @@
 import prisma from '../../lib/db';
-import { TournamentFormat, TournamentStatus, ParticipantType, Visibility, Prisma } from '@prisma/client';
+import { 
+  CreateTournamentData, 
+  UpdateTournamentData, 
+  TournamentStatus, 
+  TournamentFormat,
+  TournamentWithDetails,
+  TournamentWithHost,
+  PaginatedResult
+} from './types';
+import { Prisma, Tournament } from '@prisma/client';
 
-interface CreateTournamentData {
-  title: string;
-  description?: string;
-  format: TournamentFormat;
-  startDate: Date;
-  endDate?: Date;
-  registrationEnd: Date;
-  maxParticipants?: number;
-  prizePool?: number | string;
-  entryFee?: number | string;
-  rules?: any;
-  visibility: Visibility;
-  participantType: ParticipantType;
-  organizerId: string;
+// Helper function to map Prisma result to TournamentWithDetails
+function mapToTournamentWithDetails(tournament: any): TournamentWithDetails {
+  return {
+    ...tournament,
+    host: tournament.host,
+    _count: tournament._count
+  };
 }
 
-interface UpdateTournamentData {
-  title?: string;
-  description?: string | null;
-  format?: TournamentFormat;
-  status?: TournamentStatus;
-  startDate?: Date;
-  endDate?: Date | null;
-  registrationEnd?: Date;
-  maxParticipants?: number | null;
-  prizePool?: number | string | null;
-  entryFee?: number | string | null;
-  rules?: any;
-  visibility?: Visibility;
-  participantType?: ParticipantType;
-}
-
-export const createTournament = async (data: CreateTournamentData) => {
-  // Validate dates
-  const now = new Date();
+export const createTournament = async (
+  userId: string, 
+  data: CreateTournamentData
+): Promise<TournamentWithDetails> => {
+  // Check if user exists
+  const user = await prisma.user.findUnique({
+    where: { id: userId }
+  });
   
-  if (data.startDate < now) {
-    throw new Error('Tournament start date cannot be in the past');
+  if (!user) {
+    throw new Error('User not found');
   }
   
-  if (data.registrationEnd > data.startDate) {
-    throw new Error('Registration end date must be before tournament start date');
-  }
-  
-  if (data.endDate && data.endDate < data.startDate) {
-    throw new Error('Tournament end date must be after start date');
-  }
+  // Set default values
+  const tournamentData = {
+    name: data.name,
+    description: data.description,
+    startDate: data.startDate ? new Date(data.startDate) : null,
+    endDate: data.endDate ? new Date(data.endDate) : null,
+    hostId: userId,
+    status: data.status || 'DRAFT',
+    format: data.format || 'SINGLE_ELIMINATION',
+    maxParticipants: data.maxParticipants || null,
+    minParticipants: data.minParticipants || null,
+    teamSize: data.teamSize || null,
+    isTeamBased: data.isTeamBased ?? false,
+    registrationDeadline: data.registrationDeadline ? new Date(data.registrationDeadline) : null
+  };
   
   // Create tournament
   const tournament = await prisma.tournament.create({
-    data: {
-      title: data.title,
-      description: data.description,
-      format: data.format,
-      startDate: data.startDate,
-      endDate: data.endDate,
-      registrationEnd: data.registrationEnd,
-      maxParticipants: data.maxParticipants,
-      prizePool: data.prizePool ? new Prisma.Decimal(data.prizePool.toString()) : null,
-      entryFee: data.entryFee ? new Prisma.Decimal(data.entryFee.toString()) : null,
-      rules: data.rules,
-      visibility: data.visibility,
-      participantType: data.participantType,
-      organizerId: data.organizerId,
-    },
+    data: tournamentData,
     include: {
-      organizer: {
+      host: {
         select: {
           id: true,
           username: true,
-          displayName: true,
-          avatar: true,
+          avatar: true
+        }
+      },
+      _count: {
+        select: {
+          participants: true,
+          teams: true,
+          spectators: true
         }
       }
     }
   });
   
-  return tournament;
+  return mapToTournamentWithDetails(tournament);
 };
 
-export const getTournaments = async (page = 1, limit = 10, status?: string, search?: string) => {
+export const getTournaments = async (
+  page = 1, 
+  limit = 10, 
+  search?: string,
+  status?: TournamentStatus
+): Promise<PaginatedResult<TournamentWithDetails>> => {
   const skip = (page - 1) * limit;
   
-  // Build where clause
-  const whereClause: Prisma.TournamentWhereInput = {};
+  // Build where clause for filtering
+  let whereClause: Prisma.TournamentWhereInput = {};
   
-  // Filter by status if provided
-  if (status) {
-    if (Object.values(TournamentStatus).includes(status as TournamentStatus)) {
-      whereClause.status = status as TournamentStatus;
-    } else {
-      throw new Error('Invalid tournament status');
-    }
-  } else {
-    // By default, only show public tournaments
-    whereClause.visibility = 'PUBLIC';
+  if (search) {
+    whereClause = {
+      OR: [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } }
+      ]
+    };
   }
   
-  // Add search
-  if (search) {
-    whereClause.OR = [
-      { title: { contains: search, mode: 'insensitive' as Prisma.QueryMode } },
-      { description: { contains: search, mode: 'insensitive' as Prisma.QueryMode } },
-    ];
+  if (status) {
+    whereClause.status = status;
   }
   
   const [tournaments, totalCount] = await Promise.all([
     prisma.tournament.findMany({
       where: whereClause,
-      skip,
-      take: limit,
-      orderBy: { startDate: 'asc' },
       include: {
-        organizer: {
+        host: {
           select: {
             id: true,
             username: true,
-            displayName: true,
-            avatar: true,
+            avatar: true
           }
         },
         _count: {
           select: {
-            participations: true
+            participants: true,
+            teams: true,
+            spectators: true
           }
         }
-      }
+      },
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' }
     }),
-    prisma.tournament.count({ where: whereClause }),
+    prisma.tournament.count({ where: whereClause })
   ]);
   
   return {
-    tournaments,
+    items: tournaments.map(mapToTournamentWithDetails),
     pagination: {
       total: totalCount,
       page,
       limit,
-      pages: Math.ceil(totalCount / limit),
+      pages: Math.ceil(totalCount / limit)
     }
   };
 };
 
-export const getTournamentById = async (id: string) => {
+export const getTournamentById = async (id: string): Promise<TournamentWithDetails | null> => {
   const tournament = await prisma.tournament.findUnique({
     where: { id },
     include: {
-      organizer: {
+      host: {
         select: {
           id: true,
           username: true,
-          displayName: true,
-          avatar: true,
+          avatar: true
         }
       },
       _count: {
         select: {
-          participations: true,
-          matches: true
+          participants: true,
+          teams: true,
+          spectators: true
         }
       }
     }
   });
   
-  return tournament;
+  return tournament ? mapToTournamentWithDetails(tournament) : null;
 };
 
-export const updateTournament = async (id: string, data: UpdateTournamentData) => {
-  // Get current tournament to check ownership and status
-  const tournament = await prisma.tournament.findUnique({
-    where: { id }
+export const updateTournament = async (
+  id: string, 
+  userId: string, 
+  data: UpdateTournamentData
+): Promise<TournamentWithDetails> => {
+  // Check if tournament exists and user is host
+  const tournament = await prisma.tournament.findFirst({
+    where: {
+      id,
+      hostId: userId
+    }
   });
   
   if (!tournament) {
-    throw new Error('Tournament not found');
+    throw new Error('Tournament not found or you are not the host');
   }
   
-  // Don't allow certain updates if tournament has started
-  if (tournament.status !== 'REGISTRATION' && tournament.status !== 'UPCOMING') {
-    if (data.format || data.participantType) {
-      throw new Error('Cannot change format or participant type after tournament has started');
-    }
-  }
-  
-  // Process decimal fields
-  const updateData: any = { ...data };
-  
-  if (data.prizePool !== undefined) {
-    updateData.prizePool = data.prizePool ? new Prisma.Decimal(data.prizePool.toString()) : null;
-  }
-  
-  if (data.entryFee !== undefined) {
-    updateData.entryFee = data.entryFee ? new Prisma.Decimal(data.entryFee.toString()) : null;
-  }
+  // Handle date conversions
+  const updateData = {
+    ...data,
+    startDate: data.startDate !== undefined 
+      ? (data.startDate ? new Date(data.startDate) : null) 
+      : undefined,
+    endDate: data.endDate !== undefined 
+      ? (data.endDate ? new Date(data.endDate) : null) 
+      : undefined,
+    registrationDeadline: data.registrationDeadline !== undefined 
+      ? (data.registrationDeadline ? new Date(data.registrationDeadline) : null) 
+      : undefined
+  };
   
   // Update tournament
-  return prisma.tournament.update({
+  const updatedTournament = await prisma.tournament.update({
     where: { id },
     data: updateData,
     include: {
-      organizer: {
+      host: {
         select: {
           id: true,
           username: true,
-          displayName: true,
-          avatar: true,
+          avatar: true
+        }
+      },
+      _count: {
+        select: {
+          participants: true,
+          teams: true,
+          spectators: true
         }
       }
     }
   });
+  
+  return mapToTournamentWithDetails(updatedTournament);
 };
 
-export const deleteTournament = async (id: string) => {
-  // Check if tournament has participants or matches before deletion
-  const tournament = await prisma.tournament.findUnique({
-    where: { id },
-    include: {
-      _count: {
-        select: {
-          participations: true,
-          matches: true
-        }
-      }
+export const deleteTournament = async (id: string, userId: string): Promise<void> => {
+  // Check if tournament exists and user is host
+  const tournament = await prisma.tournament.findFirst({
+    where: {
+      id,
+      hostId: userId
     }
   });
   
   if (!tournament) {
-    throw new Error('Tournament not found');
+    throw new Error('Tournament not found or you are not the host');
   }
   
-  if (tournament._count.participations > 0 || tournament._count.matches > 0) {
-    throw new Error('Cannot delete tournament with existing participants or matches');
+  // Check if tournament is in progress or completed (might want to prevent deletion)
+  if (tournament.status === 'ONGOING' || tournament.status === 'COMPLETED') {
+    throw new Error('Cannot delete a tournament that is in progress or completed');
   }
   
-  return prisma.tournament.delete({
+  // Delete tournament - this will cascade to participants, etc. based on your database setup
+  await prisma.tournament.delete({
     where: { id }
   });
 };
 
-export const startTournament = async (id: string) => {
-  // Get tournament
-  const tournament = await prisma.tournament.findUnique({
-    where: { id },
+export const updateTournamentStatus = async (
+  id: string, 
+  userId: string, 
+  status: TournamentStatus
+): Promise<TournamentWithDetails> => {
+  // Check if tournament exists and user is host
+  const tournament = await prisma.tournament.findFirst({
+    where: {
+      id,
+      hostId: userId
+    },
     include: {
-      participations: true
+      _count: {
+        select: {
+          participants: true
+        }
+      }
     }
   });
   
   if (!tournament) {
-    throw new Error('Tournament not found');
+    throw new Error('Tournament not found or you are not the host');
   }
   
-  // Check tournament status
-  if (tournament.status !== 'REGISTRATION' && tournament.status !== 'UPCOMING') {
-    throw new Error('Tournament has already started');
-  }
-  
-  // Check if registration period has ended
-  const now = new Date();
-  if (now < tournament.registrationEnd) {
-    throw new Error('Registration period has not ended yet');
-  }
-  
-  // Check if there are enough participants
-  if (tournament.participations.length < 2) {
-    throw new Error('Tournament needs at least 2 participants to start');
+  // Validate status transitions
+  switch (status) {
+    case 'REGISTRATION_OPEN':
+      // Can only open registration from draft
+      if (tournament.status !== 'DRAFT' && tournament.status !== 'REGISTRATION_CLOSED') {
+        throw new Error('Can only open registration from draft or closed registration state');
+      }
+      break;
+      
+    case 'REGISTRATION_CLOSED':
+      // Can only close from open registration
+      if (tournament.status !== 'REGISTRATION_OPEN') {
+        throw new Error('Can only close registration from open registration state');
+      }
+      break;
+      
+    case 'ONGOING':
+      // Check minimum participants
+      if (tournament.minParticipants && tournament._count.participants < tournament.minParticipants) {
+        throw new Error(`Not enough participants. Minimum required: ${tournament.minParticipants}`);
+      }
+      // Check status
+      if (tournament.status !== 'REGISTRATION_CLOSED') {
+        throw new Error('Tournament must have registration closed before starting');
+      }
+      break;
+      
+    case 'COMPLETED':
+      // Can only complete from ongoing
+      if (tournament.status !== 'ONGOING') {
+        throw new Error('Can only complete tournaments that are ongoing');
+      }
+      break;
+      
+    case 'CANCELLED':
+      // Can cancel from most states except completed
+      if (tournament.status === 'COMPLETED') {
+        throw new Error('Cannot cancel a completed tournament');
+      }
+      break;
   }
   
   // Update tournament status
   const updatedTournament = await prisma.tournament.update({
     where: { id },
-    data: { status: 'ONGOING' },
+    data: { status },
     include: {
-      organizer: {
+      host: {
         select: {
           id: true,
           username: true,
-          displayName: true,
-          avatar: true,
+          avatar: true
+        }
+      },
+      _count: {
+        select: {
+          participants: true,
+          teams: true,
+          spectators: true
         }
       }
     }
   });
   
-  // TODO: Generate first round matches based on tournament format
-  // This would be done in a separate function that would create the bracket
-  
-  return updatedTournament;
+  return mapToTournamentWithDetails(updatedTournament);
 };
 
-export const registerParticipant = async (tournamentId: string, userId: string, additionalInfo?: any) => {
-  // Get tournament
-  const tournament = await prisma.tournament.findUnique({
-    where: { id: tournamentId },
-    include: {
-      _count: {
-        select: {
-          participations: true
-        }
-      }
+export const registerParticipant = async (
+  tournamentId: string, 
+  userId: string,
+  teamId?: string
+): Promise<any> => {
+  // Check if tournament exists and is open for registration
+  const tournament = await prisma.tournament.findFirst({
+    where: {
+      id: tournamentId,
+      status: 'REGISTRATION_OPEN'
     }
   });
   
   if (!tournament) {
-    throw new Error('Tournament not found');
+    throw new Error('Tournament not found or registration is not open');
   }
   
-  // Check tournament status
-  if (tournament.status !== 'REGISTRATION') {
-    throw new Error('Tournament registration is closed');
-  }
-  
-  // Check registration deadline
-  const now = new Date();
-  if (now > tournament.registrationEnd) {
-    throw new Error('Registration deadline has passed');
-  }
-  
-  // Check participant type
-  if (tournament.participantType !== 'INDIVIDUAL') {
-    throw new Error('This tournament requires team registration');
-  }
-  
-  // Check max participants
-  if (tournament.maxParticipants && tournament._count.participations >= tournament.maxParticipants) {
-    throw new Error('Tournament has reached maximum number of participants');
-  }
-  
-  // Check if already registered
-  const existingRegistration = await prisma.participation.findFirst({
+  // Check if user is already registered
+  const existingRegistration = await prisma.tournamentParticipant.findUnique({
     where: {
-      tournamentId,
-      userId,
+      userId_tournamentId: {
+        userId,
+        tournamentId
+      }
     }
   });
   
   if (existingRegistration) {
-    throw new Error('Already registered for this tournament');
+    throw new Error('You are already registered for this tournament');
   }
   
-  // Create participation
-  return prisma.participation.create({
+  // Check max participants if set
+  if (tournament.maxParticipants) {
+    const participantCount = await prisma.tournamentParticipant.count({
+      where: { tournamentId }
+    });
+    
+    if (participantCount >= tournament.maxParticipants) {
+      throw new Error('Tournament has reached maximum number of participants');
+    }
+  }
+  
+  // For team registration, verify team exists and user is captain
+  if (teamId) {
+    const team = await prisma.team.findFirst({
+      where: {
+        id: teamId,
+        captain: {
+          userId
+        }
+      }
+    });
+    
+    if (!team) {
+      throw new Error('Team not found or you are not the captain');
+    }
+    
+    if (team.tournamentId !== tournamentId) {
+      throw new Error('Team is not registered for this tournament');
+    }
+  }
+  
+  // Register participant
+  const participant = await prisma.tournamentParticipant.create({
     data: {
-      tournamentId,
       userId,
-      seed: tournament._count.participations + 1,
-      status: 'REGISTERED',
- 
+      tournamentId,
+      teamId
     },
     include: {
-      tournament: {
-        select: {
-          id: true,
-          title: true,
-          startDate: true,
-          format: true
-        }
-      },
       user: {
         select: {
           id: true,
           username: true,
-          displayName: true,
           avatar: true
         }
-      }
+      },
+      team: teamId ? true : false
     }
   });
+  
+  return participant;
 };
 
-export const registerTeam = async (tournamentId: string, teamId: string, userId: string, additionalInfo?: any) => {
-  // Get tournament
-  const tournament = await prisma.tournament.findUnique({
-    where: { id: tournamentId },
-    include: {
-      _count: {
-        select: {
-          participations: true
-        }
-      }
-    }
-  });
-  
-  if (!tournament) {
-    throw new Error('Tournament not found');
-  }
-  
-  // Check tournament status
-  if (tournament.status !== 'REGISTRATION') {
-    throw new Error('Tournament registration is closed');
-  }
-  
-  // Check registration deadline
-  const now = new Date();
-  if (now > tournament.registrationEnd) {
-    throw new Error('Registration deadline has passed');
-  }
-  
-  // Check participant type
-  if (tournament.participantType !== 'TEAM') {
-    throw new Error('This tournament requires individual registration');
-  }
-  
-  // Check max participants
-  if (tournament.maxParticipants && tournament._count.participations >= tournament.maxParticipants) {
-    throw new Error('Tournament has reached maximum number of participants');
-  }
-  
-  // Check if team exists and user is captain or owner
-  const team = await prisma.team.findFirst({
+export const unregisterParticipant = async (
+  tournamentId: string, 
+  userId: string
+): Promise<void> => {
+  // Check if tournament exists and is still in registration phase
+  const tournament = await prisma.tournament.findFirst({
     where: {
-      id: teamId,
+      id: tournamentId,
       OR: [
-        { creatorId: userId },
-        {
-          members: {
-            some: {
-              userId,
-              role: 'CAPTAIN'
-            }
-          }
-        }
+        { status: 'REGISTRATION_OPEN' },
+        { status: 'REGISTRATION_CLOSED' }
       ]
     }
   });
   
-  if (!team) {
-    throw new Error('Team not found or you do not have permission to register this team');
+  if (!tournament) {
+    throw new Error('Tournament not found or registration phase has ended');
   }
   
-  // Check if team is already registered
-  const existingRegistration = await prisma.participation.findFirst({
+  // Check if participant exists
+  const participant = await prisma.tournamentParticipant.findUnique({
     where: {
-      tournamentId,
-      teamId,
+      userId_tournamentId: {
+        userId,
+        tournamentId
+      }
+    },
+    include: {
+      team: {
+        include: {
+          captain: true
+        }
+      }
     }
   });
   
-  if (existingRegistration) {
-    throw new Error('Team already registered for this tournament');
+  if (!participant) {
+    throw new Error('You are not registered for this tournament');
   }
   
-  // Create participation
-  return prisma.participation.create({
-    data: {
-      tournamentId,
-      teamId,
-      seed: tournament._count.participations + 1,
-      status: 'REGISTERED',
-       
-    },
-    include: {
-      tournament: {
-        select: {
-          id: true,
-          title: true,
-          startDate: true,
-          format: true
-        }
-      },
-      team: {
-        select: {
-          id: true,
-          name: true,
-          tag: true,
-          logo: true
-        }
+  // If participant is a team captain, prevent unregistration
+  if (participant.team && participant.team.captain.userId === userId) {
+    throw new Error('Team captains cannot unregister. Transfer captaincy first or delete the team.');
+  }
+  
+  // Delete the participation record
+  await prisma.tournamentParticipant.delete({
+    where: {
+      userId_tournamentId: {
+        userId,
+        tournamentId
       }
     }
   });
 };
 
-export const getTournamentParticipants = async (tournamentId: string) => {
-  const participants = await prisma.participation.findMany({
-    where: {
-      tournamentId
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          username: true,
-          displayName: true,
-          avatar: true
+export const addSpectator = async (
+  tournamentId: string, 
+  userId: string
+): Promise<void> => {
+  // Check if tournament exists
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId }
+  });
+  
+  if (!tournament) {
+    throw new Error('Tournament not found');
+  }
+  
+  // Add spectator connection
+  await prisma.tournament.update({
+    where: { id: tournamentId },
+    data: {
+      spectators: {
+        connect: { id: userId }
+      }
+    }
+  });
+};
+
+export const removeSpectator = async (
+  tournamentId: string, 
+  userId: string
+): Promise<void> => {
+  // Check if tournament exists
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId }
+  });
+  
+  if (!tournament) {
+    throw new Error('Tournament not found');
+  }
+  
+  // Remove spectator connection
+  await prisma.tournament.update({
+    where: { id: tournamentId },
+    data: {
+      spectators: {
+        disconnect: { id: userId }
+      }
+    }
+  });
+};
+
+export const getTournamentParticipants = async (
+  tournamentId: string,
+  page = 1,
+  limit = 20
+): Promise<PaginatedResult<any>> => {
+  const skip = (page - 1) * limit;
+  
+  // Check if tournament exists
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId }
+  });
+  
+  if (!tournament) {
+    throw new Error('Tournament not found');
+  }
+  
+  const [participants, totalCount] = await Promise.all([
+    prisma.tournamentParticipant.findMany({
+      where: { tournamentId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            avatar: true
+          }
+        },
+        team: {
+          select: {
+            id: true,
+            name: true
+          }
         }
       },
-      team: {
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.tournamentParticipant.count({ where: { tournamentId } })
+  ]);
+  
+  return {
+    items: participants,
+    pagination: {
+      total: totalCount,
+      page,
+      limit,
+      pages: Math.ceil(totalCount / limit)
+    }
+  };
+};
+
+export const getTournamentTeams = async (
+  tournamentId: string,
+  page = 1,
+  limit = 20
+): Promise<PaginatedResult<any>> => {
+  const skip = (page - 1) * limit;
+  
+  // Check if tournament exists
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId }
+  });
+  
+  if (!tournament) {
+    throw new Error('Tournament not found');
+  }
+  
+  const [teams, totalCount] = await Promise.all([
+    prisma.team.findMany({
+      where: { tournamentId },
+      include: {
+        captain: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                avatar: true
+              }
+            }
+          }
+        },
+        _count: {
+          select: {
+            members: true
+          }
+        }
+      },
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.team.count({ where: { tournamentId } })
+  ]);
+  
+  return {
+    items: teams,
+    pagination: {
+      total: totalCount,
+      page,
+      limit,
+      pages: Math.ceil(totalCount / limit)
+    }
+  };
+};
+
+export const getUserHostedTournaments = async (
+  userId: string,
+  page = 1,
+  limit = 10
+): Promise<PaginatedResult<TournamentWithDetails>> => {
+  const skip = (page - 1) * limit;
+  
+  const [tournaments, totalCount] = await Promise.all([
+    prisma.tournament.findMany({
+      where: { hostId: userId },
+      include: {
+        host: {
+          select: {
+            id: true,
+            username: true,
+            avatar: true
+          }
+        },
+        _count: {
+          select: {
+            participants: true,
+            teams: true,
+            spectators: true
+          }
+        }
+      },
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.tournament.count({ where: { hostId: userId } })
+  ]);
+  
+  return {
+    items: tournaments.map(mapToTournamentWithDetails),
+    pagination: {
+      total: totalCount,
+      page,
+      limit,
+      pages: Math.ceil(totalCount / limit)
+    }
+  };
+};
+
+export const getUserParticipatingTournaments = async (
+  userId: string,
+  page = 1,
+  limit = 10
+): Promise<PaginatedResult<any>> => {
+  const skip = (page - 1) * limit;
+  
+  const [participations, totalCount] = await Promise.all([
+    prisma.tournamentParticipant.findMany({
+      where: { userId },
+      include: {
+        tournament: {
+          include: {
+            host: {
+              select: {
+                id: true,
+                username: true,
+                avatar: true
+              }
+            },
+            _count: {
+              select: {
+                participants: true,
+                teams: true
+              }
+            }
+          }
+        },
+        team: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      },
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.tournamentParticipant.count({ where: { userId } })
+  ]);
+  
+  return {
+    items: participations.map(p => ({
+      ...p.tournament,
+      team: p.team,
+      joinedAt: p.createdAt
+    })),
+    pagination: {
+      total: totalCount,
+      page,
+      limit,
+      pages: Math.ceil(totalCount / limit)
+    }
+  };
+};
+
+export const getUserSpectatedTournaments = async (
+  userId: string,
+  page = 1,
+  limit = 10
+): Promise<PaginatedResult<TournamentWithDetails>> => {
+  const skip = (page - 1) * limit;
+  
+  // Find user to get spectated tournaments
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      spectatedTournaments: {
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          host: {
+            select: {
+              id: true,
+              username: true,
+              avatar: true
+            }
+          },
+          _count: {
+            select: {
+              participants: true,
+              teams: true,
+              spectators: true
+            }
+          }
+        }
+      },
+      _count: {
         select: {
-          id: true,
-          name: true,
-          tag: true,
-          logo: true
+          spectatedTournaments: true
         }
       }
-    },
-    orderBy: {
-      seed: 'asc'
     }
   });
   
-  return participants;
+  if (!user) {
+    throw new Error('User not found');
+  }
+  
+  return {
+    items: user.spectatedTournaments.map(mapToTournamentWithDetails),
+    pagination: {
+      total: user._count.spectatedTournaments,
+      page,
+      limit,
+      pages: Math.ceil(user._count.spectatedTournaments / limit)
+    }
+  };
 };
