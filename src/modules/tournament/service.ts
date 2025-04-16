@@ -344,6 +344,11 @@ export const registerParticipant = async (
   if (!tournament) {
     throw new Error('Tournament not found or registration is not open');
   }
+
+  const isHost = tournament.hostId === userId;
+  if (isHost) {
+    throw new Error('Hosts cannot register as participants');
+  }
   
   // Check if user is already registered
   const existingRegistration = await prisma.tournamentParticipant.findUnique({

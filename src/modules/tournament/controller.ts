@@ -38,7 +38,7 @@ export const getTournamentById = async (req: Request, res: Response) => {
     const tournament = await tournamentService.getTournamentById(id);
     
     if (!tournament) {
-      return res.status(404).json({ error: 'Tournament not found' });
+        res.status(404).json({ error: 'Tournament not found' });
     }
     
     res.json(tournament);
