@@ -23,7 +23,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     // Verify the token with Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
-    if (error || !user) {
+    if (error ) {
         res.status(401).json({ error: 'Invalid or expired token' });
     }
 

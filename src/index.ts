@@ -7,6 +7,7 @@ import userRoutes from "./modules/user/routes";
 import tournamentRoutes from "./modules/tournament/routes";
 import teamRoutes from "./modules/team/routes"; // Add this line
 import swaggerUi from 'swagger-ui-express';
+import matchRoutes from './modules/match/routes'
 import { specs } from './utils/swagger';
 import { standardLimiter, authLimiter } from './middlewares/rateLimit';
 
@@ -25,6 +26,7 @@ app.use('/auth', authLimiter, authRoutes);
 app.use('/users', standardLimiter, userRoutes);
 app.use('/tournaments', standardLimiter, tournamentRoutes);
 app.use('/teams', standardLimiter, teamRoutes); // Add this line
+app.use('/match',standardLimiter, matchRoutes);
 
 app.get("/", (req, res) => {
   res.send("Game Tournament API");

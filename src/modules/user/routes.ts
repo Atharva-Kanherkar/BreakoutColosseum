@@ -11,7 +11,8 @@ const router = Router();
 // Protected routes - require authentication
 router.get('/profile', authenticate, userController.getProfile);
 router.put('/profile', authenticate, validateUpdateProfile, userController.updateProfile);
-
+// Get tournaments a user is involved with (combined view)
+// router.get('/me/tournaments', authenticate, userController.getUserTournaments);
  
 
 // Admin routes - system admins only (special flag in user model)

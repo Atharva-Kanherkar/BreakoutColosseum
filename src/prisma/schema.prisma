@@ -22,7 +22,7 @@ model User {
    id                   String                  @id @default(cuid())
   email                String                  @unique
   username             String?
-  passwordHash         String
+  password             String?
   avatar               String?                 // Add this field
   bio                  String?                 // Add this field
   createdAt            DateTime                @default(now())
@@ -36,9 +36,11 @@ model User {
   participation        TournamentParticipant[] @relation("UserParticipants")
   // Tournaments this user is spectating (Direct M2M relation)
   spectatedTournaments Tournament[]            @relation("SpectatedTournaments")
+
+  TournamentAnnouncement TournamentAnnouncement[]
 }
 
-// ... existing schema content ...
+// ... existing schema content ... 
 
 enum MatchStatus {
   PENDING      // Match is scheduled but hasn't started
@@ -127,32 +129,30 @@ model Match {
   spectators          User[]                  @relation("SpectatedTournaments")
 
   @@index([hostId])
+  TournamentAnnouncement TournamentAnnouncement[]
 }
 
-// Represents a User's participation in a specific Tournament
-// This acts as a join table with potential extra info
+ // Updates to TournamentParticipant model
 model TournamentParticipant {
   id           String     @id @default(cuid())
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  seed         Int?       // Add this field for participant seeding
+  isApproved   Boolean    @default(true) // Add this field for participant approval
 
   // Link to the User participating
   user         User       @relation("UserParticipants", fields: [userId], references: [id])
   userId       String
 
-  // Link to the Tournament they are participating in
+  // Other existing fields...
   tournament   Tournament @relation("TournamentParticipants", fields: [tournamentId], references: [id])
   tournamentId String
-
-  // Link to the Team the participant belongs to (optional, might join later)
   team         Team?      @relation("TeamMembers", fields: [teamId], references: [id])
   teamId       String?
   matchesAsParticipantA Match[] @relation("ParticipantAMatches")
   matchesAsParticipantB Match[] @relation("ParticipantBMatches")
-  // Is this participant the captain of their team?
-  // We link the captain directly from the Team model for uniqueness.
-  // This field could be added for quick checks if needed, but might be redundant.
-  // isCaptain    Boolean    @default(false)
+ 
+
 
   // Ensures a user can only participate once in the same tournament
   @@unique([userId, tournamentId])
@@ -162,10 +162,12 @@ model TournamentParticipant {
   Team Team[] @relation("TeamCaptain")
 }
 
-// Represents a team within a specific tournament
+// Updates to Team model
 model Team {
   id           String   @id @default(cuid())
   name         String
+  description  String?  // Add this field for team description
+  logo         String?  // Add this field for team logo
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -173,13 +175,11 @@ model Team {
   tournament   Tournament @relation(fields: [tournamentId], references: [id])
   tournamentId String
 
-  // The participant who is the captain of this team
-  // Note: The captain MUST be a participant in the same tournament.
+  // Other existing fields...
   captain      TournamentParticipant @relation("TeamCaptain", fields: [captainId], references: [id])
-  captainId    String                @unique // A team has only one captain
+  captainId    String                @unique
   matchesAsTeamA Match[]  @relation("TeamAMatches")
   matchesAsTeamB Match[]  @relation("TeamBMatches")
-  // The members of this team (participants)
   members      TournamentParticipant[] @relation("TeamMembers")
 
   // Ensures team names are unique within a given tournament
@@ -187,3 +187,23 @@ model Team {
   @@index([tournamentId])
 }
 
+// Tournament announcements model
+model TournamentAnnouncement {
+  id           String     @id @default(cuid())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  title        String
+  content      String
+  importance   String     @default("medium") // low, medium, high, urgent
+  
+  // Link to the Tournament
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  tournamentId String
+  
+  // Link to the User who authored the announcement
+  author       User       @relation(fields: [authorId], references: [id])
+  authorId     String
+  
+  @@index([tournamentId])
+  @@index([authorId])
+}

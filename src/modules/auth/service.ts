@@ -40,7 +40,7 @@ export async function registerUser(email: string, password: string, name?: strin
       data: {
         email: email.toLowerCase(),  // Store email in lowercase
         username: name || email.split('@')[0], 
-        passwordHash: "[PLACEHOLDER]",
+        password: password,
         supabaseId: authData.user.id,
       },
     });
