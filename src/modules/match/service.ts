@@ -14,6 +14,7 @@ import {
   PaginatedResult
 } from './types';
 import { generateInitialBracket, advanceWinnerToNextMatch } from '../../utils/brackets';
+import * as prizeService from '../prize/service';
 
 export const createMatch = async (data: CreateMatchData): Promise<MatchWithTeams> => {
   // Validate tournament exists and is in the right state
@@ -240,7 +241,11 @@ export const submitMatchResult = async (
   const match = await prisma.match.findUnique({
     where: { id },
     include: {
-      tournament: true,
+      tournament: {
+        include : {
+          prize : true,
+        }
+      },
       teamA: true,
       teamB: true,
       participantA: {
@@ -339,7 +344,23 @@ export const submitMatchResult = async (
   if (updatedMatch.nextMatchId) {
     await advanceWinnerToNextMatch(updatedMatch.id, result.winnerId);
   }
-
+  try {
+    // Check if tournament has prize info and match is completed
+    
+    if (match.tournament.prize && updatedMatch.status === MatchStatus.COMPLETED) {
+      // Determine winner type (team or participant)
+      const winnerType = updatedMatch.teamAId || updatedMatch.teamBId ? 'team' : 'participant';
+      
+      // Pass winner ID to prize service
+      await prizeService.processMatchPayment(
+        id,
+        result.winnerId,
+        winnerType
+      );
+    }
+  } catch (error) {
+    console.error(`Error processing prize payment for match ${id}:`, error);
+  }
   return updatedMatch;
 };
 
@@ -569,7 +590,9 @@ export const resolveDispute = async (id: string, userId: string, result: MatchRe
   const match = await prisma.match.findUnique({
     where: { id },
     include: {
-      tournament: true
+      tournament: {
+        include: { prize: true } 
+      }
     }
   });
 

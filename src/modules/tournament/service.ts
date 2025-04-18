@@ -9,6 +9,8 @@ import {
   PaginatedResult
 } from './types';
 import { Prisma, Tournament } from '@prisma/client';
+import * as prizeService from '../prize/service';
+
 
 // Helper function to map Prisma result to TournamentWithDetails
 function mapToTournamentWithDetails(tournament: any): TournamentWithDetails {
@@ -327,80 +329,75 @@ export const updateTournamentStatus = async (
   
   return mapToTournamentWithDetails(updatedTournament);
 };
-
+ 
 export const registerParticipant = async (
-  tournamentId: string, 
+  tournamentId: string,
   userId: string,
-  teamId?: string
-): Promise<any> => {
-  // Check if tournament exists and is open for registration
-  const tournament = await prisma.tournament.findFirst({
-    where: {
-      id: tournamentId,
-      status: 'REGISTRATION_OPEN'
-    }
-  });
-  
-  if (!tournament) {
-    throw new Error('Tournament not found or registration is not open');
-  }
-
-  const isHost = tournament.hostId === userId;
-  if (isHost) {
-    throw new Error('Hosts cannot register as participants');
-  }
-  
-  // Check if user is already registered
-  const existingRegistration = await prisma.tournamentParticipant.findUnique({
-    where: {
-      userId_tournamentId: {
-        userId,
-        tournamentId
+  entryFeeTx?: string // Optional transaction signature
+) => {
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId },
+    include: {
+      prize: true, // Include prize info to check for entry fee
+      participants: {
+        select: { id: true }
       }
     }
   });
+
+  if (!tournament) {
+    throw new Error('Tournament not found');
+  }
   
-  if (existingRegistration) {
+  if (tournament.status !== TournamentStatus.REGISTRATION_OPEN) {
+    throw new Error('Tournament registration is not open');
+  }
+  
+  if (tournament.maxParticipants && tournament.participants.length >= tournament.maxParticipants) {
+    throw new Error('Tournament has reached maximum participants');
+  }
+
+  // Check if user is already registered
+  const existingParticipant = await prisma.tournamentParticipant.findFirst({
+    where: {
+      userId,
+      tournamentId
+    }
+  });
+  
+  if (existingParticipant) {
     throw new Error('You are already registered for this tournament');
   }
-  
-  // Check max participants if set
-  if (tournament.maxParticipants) {
-    const participantCount = await prisma.tournamentParticipant.count({
-      where: { tournamentId }
-    });
-    
-    if (participantCount >= tournament.maxParticipants) {
-      throw new Error('Tournament has reached maximum number of participants');
+
+  // Check if entry fee is required
+  let entryFeeVerified = false;
+  if (tournament.prize?.entryFee && parseFloat(tournament.prize.entryFee) > 0) {
+    if (!entryFeeTx) {
+      throw new Error('Entry fee payment transaction is required for this tournament');
     }
+    
+    // Verify the transaction
+    entryFeeVerified = await prizeService.verifyEntryFeePayment(
+      entryFeeTx,
+      tournament.prize.entryFee,
+      tournament.prize.tokenType || 'SOL',
+      tournament.prize.tokenAddress || undefined
+    );
+    
+    if (!entryFeeVerified) {
+      throw new Error('Entry fee payment verification failed');
+    }
+  } else {
+    // No entry fee required
+    entryFeeVerified = true;
   }
-  
-  // For team registration, verify team exists and user is captain
-  if (teamId) {
-    const team = await prisma.team.findFirst({
-      where: {
-        id: teamId,
-        captain: {
-          userId
-        }
-      }
-    });
-    
-    if (!team) {
-      throw new Error('Team not found or you are not the captain');
-    }
-    
-    if (team.tournamentId !== tournamentId) {
-      throw new Error('Team is not registered for this tournament');
-    }
-  }
-  
-  // Register participant
+
+  // Create participant record
   const participant = await prisma.tournamentParticipant.create({
     data: {
       userId,
       tournamentId,
-      teamId
+      entryFeeTx: entryFeeVerified ? entryFeeTx : null
     },
     include: {
       user: {
@@ -409,11 +406,10 @@ export const registerParticipant = async (
           username: true,
           avatar: true
         }
-      },
-      team: teamId ? true : false
+      }
     }
   });
-  
+
   return participant;
 };
 
@@ -909,7 +905,8 @@ export const createTeam = async (
     const captain = await tx.tournamentParticipant.create({
       data: {
         userId: captainId,
-        tournamentId
+        tournamentId,
+        entryFeeTx: null,
       }
     });
     
@@ -1031,7 +1028,8 @@ export const addTeamMember = async (
       id: teamId,
       tournamentId,
       captain: {
-        userId: captainId
+        userId: captainId,
+        entryFeeTx : null,
       }
     },
     include: {
@@ -1049,7 +1047,8 @@ export const addTeamMember = async (
   const existingMember = await prisma.tournamentParticipant.findFirst({
     where: {
       userId,
-      teamId
+      teamId,
+      entryFeeTx : null, 
     }
   });
   

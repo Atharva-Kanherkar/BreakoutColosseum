@@ -96,9 +96,13 @@ export const registerParticipant = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.user!.id;
-    const { teamId } = req.body; // Optional: If registering as a team
+    const { entryFeeTx } = req.body; // Get transaction signature
     
-    const registration = await tournamentService.registerParticipant(id, userId, teamId);
+    const registration = await tournamentService.registerParticipant(
+      id, 
+      userId,
+      entryFeeTx // Pass payment transaction signature
+    );
     
     res.status(201).json(registration);
   } catch (error: any) {
