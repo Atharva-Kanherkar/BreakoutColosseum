@@ -26,3 +26,100 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+/* Add these new animation classes to the end of your CSS file */
+
+/* Smooth hover glow effect */
+.neon-glow {
+  filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0));
+  transition: filter 0.5s ease;
+}
+
+.neon-glow:hover {
+  filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.7));
+}
+
+/* Floating animations for background elements */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  25% { transform: translateY(-15px) translateX(10px); }
+  50% { transform: translateY(-5px) translateX(25px); }
+  75% { transform: translateY(-20px) translateX(15px); }
+}
+
+@keyframes float-medium {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  25% { transform: translateY(-25px) translateX(-15px); }
+  50% { transform: translateY(-10px) translateX(-25px); }
+  75% { transform: translateY(-20px) translateX(-10px); }
+}
+
+@keyframes float-fast {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  25% { transform: translateY(20px) translateX(15px); }
+  50% { transform: translateY(10px) translateX(25px); }
+  75% { transform: translateY(15px) translateX(10px); }
+}
+
+@keyframes float-reverse {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  25% { transform: translateY(25px) translateX(-10px); }
+  50% { transform: translateY(15px) translateX(-15px); }
+  75% { transform: translateY(10px) translateX(-5px); }
+}
+
+.animate-float-slow {
+  animation: float-slow 20s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float-medium 15s ease-in-out infinite;
+}
+
+.animate-float-fast {
+  animation: float-fast 12s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: float-reverse 18s ease-in-out infinite;
+}
+
+/* Slow ping animation for stats icons */
+@keyframes ping-slow {
+  0% { transform: scale(0.95); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.5; }
+  100% { transform: scale(0.95); opacity: 1; }
+}
+
+.animate-ping-slow {
+  animation: ping-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Animation delay utilities */
+.animation-delay-300 {
+  animation-delay: 300ms;
+}
+
+.animation-delay-600 {
+  animation-delay: 600ms;
+}
+
+.animation-delay-900 {
+  animation-delay: 900ms;
+}
+
+/* Parallax effect base classes */
+.parallax {
+  transition: transform 0.1s cubic-bezier(0.2, 0, 0.1, 1);
+  will-change: transform;
+}
+
+.parallax-slow {
+  transform-style: preserve-3d;
+  transform: perspective(1000px);
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0.1, 1);
+}
+
+.parallax-item {
+  transform-style: preserve-3d;
+  transition: transform 0.1s cubic-bezier(0.2, 0, 0.1, 1);
+}
