@@ -8,91 +8,165 @@ import { Anton } from 'next/font/google'
 // Anton font for headings
 const anton = Anton({ weight: '400', subsets: ['latin'], display: 'swap' })
 
-export default function LandingPage() {
-  const [glitchText, setGlitchText] = useState(false)
-  const heroRef = useRef<HTMLDivElement>(null)
-  const [logoHover, setLogoHover] = useState(false)
-  const [audioPlaying, setAudioPlaying] = useState(false);
-  const [showAudioPrompt, setShowAudioPrompt] = useState(false);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [splashVisible, setSplashVisible] = useState(true);
-
-  // Randomize glitch effect
-  useEffect(() => {
-    const glitchInterval = setInterval(() => {
-      setGlitchText(true)
-      setTimeout(() => setGlitchText(false), 200)
-    }, 3000)
-    
-    return () => clearInterval(glitchInterval)
-  }, [])
-
-  // Function to enter site and play audio
-  const enterSite = () => {
-    if (audioRef.current) {
-      audioRef.current.volume = 0.4; // Set initial volume to 40%
-      audioRef.current.play()
-        .then(() => {
-          setAudioPlaying(true);
-          setSplashVisible(false);
-        })
-        .catch(error => {
-          console.log("Audio play failed:", error);
-          setSplashVisible(false);
-        });
-    } else {
-      setSplashVisible(false);
-    }
-  };
   
-  // Clean up audio when component unmounts
-  useEffect(() => {
-    return () => {
+export default function LandingPage() {
+    // Add preloader states
+    const [loading, setLoading] = useState(true);
+    const [loadingProgress, setLoadingProgress] = useState(0);
+    const [glitchText, setGlitchText] = useState(false)
+    const heroRef = useRef<HTMLDivElement>(null)
+    const [logoHover, setLogoHover] = useState(false)
+    const [audioPlaying, setAudioPlaying] = useState(false);
+    const audioRef = useRef<HTMLAudioElement>(null);
+    const [splashVisible, setSplashVisible] = useState(true);
+  
+    // Simulate loading progress
+    useEffect(() => {
+      // Simulate loading resources
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.floor(Math.random() * 10) + 1;
+        if (progress > 100) progress = 100;
+        
+        setLoadingProgress(progress);
+        
+        if (progress === 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setLoading(false);
+          }, 500); // Short delay before hiding preloader
+        }
+      }, 150);
+  
+      // Optional: Check if video, audio and other resources are actually loaded
+      const videoElem = document.querySelector('video');
+      if (videoElem) {
+        videoElem.addEventListener('loadeddata', () => {
+          setLoadingProgress(prev => Math.max(prev, 70));
+        });
+      }
+  
+      return () => clearInterval(interval);
+    }, []);
+  
+    // Randomize glitch effect
+    useEffect(() => {
+      const glitchInterval = setInterval(() => {
+        setGlitchText(true)
+        setTimeout(() => setGlitchText(false), 200)
+      }, 3000)
+      
+      return () => clearInterval(glitchInterval)
+    }, [])
+  
+    // Function to enter site and play audio
+    const enterSite = () => {
       if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
+        audioRef.current.volume = 0.4; // Set initial volume to 40%
+        audioRef.current.play()
+          .then(() => {
+            setAudioPlaying(true);
+            setSplashVisible(false);
+          })
+          .catch(error => {
+            console.log("Audio play failed:", error);
+            setSplashVisible(false);
+          });
+      } else {
+        setSplashVisible(false);
       }
     };
-  }, []);
-
-  // Toggle audio function
-  const toggleAudio = () => {
-    if (!audioRef.current) return;
     
-    if (audioPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play()
-        .catch(error => {
-          console.log("Audio play failed:", error);
-          // Could show a notification to the user about needing to interact first
-        });
-    }
-    
-    setAudioPlaying(!audioPlaying);
-  };
+    // Clean up audio when component unmounts
+    useEffect(() => {
+      return () => {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
+      };
+    }, []);
   
-  return (
-    <main className="min-h-screen bg-black text-white overflow-hidden pt-20">
-      {/* Splash Screen */}
-      {splashVisible && (
-        <div className="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center">
-          <div className={`${anton.className} text-5xl sm:text-6xl md:text-7xl mb-8 glitch-text ${glitchText ? 'active' : ''}`} data-text="CHAIN ARENA">
-            <span className="text-white">CHAIN</span>
-            <span className="text-red-600">ARENA</span>
+    // Toggle audio function
+    const toggleAudio = () => {
+      if (!audioRef.current) return;
+      
+      if (audioPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play()
+          .catch(error => {
+            console.log("Audio play failed:", error);
+          });
+      }
+      
+      setAudioPlaying(!audioPlaying);
+    };
+    
+    return (
+      <main className="min-h-screen bg-black text-white overflow-hidden pt-20">
+        {/* Preloader */}
+        {loading && (
+          <div className="fixed inset-0 bg-black z-[110] flex flex-col items-center justify-center">
+            {/* Chain Arena Logo (Static) */}
+            <div className={`${anton.className} text-4xl sm:text-5xl mb-12 opacity-80`}>
+              <span className="text-white">CHAIN</span>
+              <span className="text-red-600">ARENA</span>
+            </div>
+            
+            {/* Loading indicator */}
+            <div className="w-64 h-1 bg-gray-800 relative mb-6 overflow-hidden">
+              <div 
+                className="h-full bg-red-600 absolute top-0 left-0 transition-all duration-300"
+                style={{ width: `${loadingProgress}%` }}
+              ></div>
+              {/* Glitch effect on progress bar */}
+              <div 
+                className="h-full bg-cyan-400 absolute top-0 left-0 mix-blend-overlay opacity-50"
+                style={{ 
+                  width: `${loadingProgress * 0.7}%`, 
+                  transform: 'translateX(10px)',
+                  filter: 'blur(4px)'
+                }}
+              ></div>
+            </div>
+            
+            {/* Loading Text */}
+            <div className="font-mono text-sm text-gray-400 tracking-widest flex items-center">
+              <span className="mr-2">LOADING</span>
+              <span className="text-red-500">{loadingProgress}%</span>
+              <span className="animate-pulse ml-1 text-red-500">_</span>
+            </div>
+            
+            {/* Decorative elements */}
+            <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex">
+              <div className="w-2 h-5 bg-red-600 animate-pulse mx-1"></div>
+              <div className="w-2 h-8 bg-red-500 animate-pulse mx-1" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-2 h-3 bg-red-700 animate-pulse mx-1" style={{ animationDelay: '0.4s' }}></div>
+            </div>
           </div>
-          <p className="cyber-text text-lg sm:text-xl mx-auto max-w-md mb-10 text-gray-400 text-center">
-            Enter the ultimate blockchain gaming platform
-          </p>
-          <button 
-            onClick={enterSite}
-            className="cyber-glitch-btn relative overflow-hidden font-mono text-base font-semibold uppercase tracking-wider px-8 py-3"
-          >
-            <span className="cyber-glitch-btn-text">ENTER SITE</span>
-            <span className="cyber-glitch-btn-glitch"></span>
-          </button>
-        </div>
-      )}
+        )}
+  
+        {/* Splash Screen - only show if preloader is done */}
+        {!loading && splashVisible && (
+          <div className="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center">
+            <div className={`${anton.className} text-5xl sm:text-6xl md:text-7xl mb-8 glitch-text ${glitchText ? 'active' : ''}`} data-text="CHAIN ARENA">
+              <span className="text-white">CHAIN</span>
+              <span className="text-red-600">ARENA</span>
+            </div>
+            <p className="cyber-text text-lg sm:text-xl mx-auto max-w-md mb-10 text-gray-400 text-center">
+              Enter the ultimate blockchain gaming platform
+            </p>
+            <button 
+              onClick={enterSite}
+              className="cyber-glitch-btn relative overflow-hidden font-mono text-base font-semibold uppercase tracking-wider px-8 py-3"
+            >
+              <span className="cyber-glitch-btn-text">ENTER SITE</span>
+              <span className="cyber-glitch-btn-glitch"></span>
+            </button>
+          </div>
+        )}
+   
 
       {/* Hero Section with Video Background */}
       <section 
