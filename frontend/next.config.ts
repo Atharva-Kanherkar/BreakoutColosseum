@@ -10,6 +10,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Add proxy for API calls to avoid CORS issues
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: process.env.NEXT_PUBLIC_BACKEND_URL + '/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

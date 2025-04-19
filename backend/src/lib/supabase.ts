@@ -2,14 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load environment variables from .env file
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+// Load environment variables
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-const supabaseUrl = process.env.SUPABASE_URL as string;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY as string;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase credentials in environment variables');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Create a single supabase client for the entire app
+ // Create a single supabase client for the entire app
+export const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_ANON_KEY || '' // Changed from SUPABASE_SERVICE_KEY
+);

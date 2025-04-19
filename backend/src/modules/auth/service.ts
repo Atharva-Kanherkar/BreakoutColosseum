@@ -1,94 +1,92 @@
 import { supabase } from "../../lib/supabase";
 import prisma from "../../lib/db";
 
-export async function registerUser(email: string, password: string, name?: string) {
-  // First check if the user already exists in Supabase
-  console.log(`Attempting to register user with email: ${email}`);
-  
+export async function registerUser(email: string, name: string, supabaseUid: string) {
   // Check if user exists in your database first
-  const existingUserInDatabase = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() }
+  const existingUserInDatabase = await prisma.user.findFirst({
+    where: { 
+      OR: [
+        { email: email.toLowerCase() },
+        { supabaseId: supabaseUid }
+      ]
+    }
   });
   
   if (existingUserInDatabase) {
-    console.log(`User already exists in local database with ID: ${existingUserInDatabase.id}`);
-    throw new Error('User already registered in local database');
-  }
-  
-  // Create user in Supabase
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-
-  console.log('Supabase response:', { authData, authError });
-
-  if (authError) {
-    console.error('Supabase auth error:', authError);
-    throw new Error(authError.message);
+    if (existingUserInDatabase.supabaseId === supabaseUid) {
+      return { message: 'User already registered', userId: existingUserInDatabase.id };
+    }
+    throw new Error('User already registered with this email');
   }
 
-  if (!authData.user) {
-    console.error('No user returned from Supabase');
-    throw new Error('Failed to create user in authentication system');
-  }
-
-  let result;
   try {
     // Create user in our database
     const user = await prisma.user.create({
       data: {
-        email: email.toLowerCase(),  // Store email in lowercase
-        username: name || email.split('@')[0], 
-        password: password,
-        supabaseId: authData.user.id,
+        email: email.toLowerCase(),
+        username: name || email.split('@')[0],
+        supabaseId: supabaseUid,
       },
     });
     
     console.log(`User successfully created in database with ID: ${user.id}`);
-    // Store result in variable instead of returning
-    result = { message: 'User registered successfully', userId: user.id };
+    return { message: 'User registered successfully', userId: user.id };
   } catch (dbError) {
     console.error('Database error:', dbError);
-    // Attempt to clean up the Supabase user since our DB creation failed
-    const { error: deleteError } = await supabase.auth.admin.deleteUser(authData.user.id);
-    if (deleteError) {
-      console.error('Failed to delete Supabase user after DB error:', deleteError);
-    }
-    // Throw error instead of returning
+    throw dbError;
+  }
+}
+
+export async function syncUser(supabaseUid: string, email: string) {
+  // Find user by Supabase ID
+  const user = await prisma.user.findUnique({
+    where: { supabaseId: supabaseUid },
+  });
   
+  if (user) {
+    // User exists, update email if it changed
+    if (user.email !== email.toLowerCase()) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { email: email.toLowerCase() }
+      });
+    }
+    return { userId: user.id };
   }
   
-  // Single return statement at the end of function
-  return result;
+  // User doesn't exist in our DB, create them
+  const newUser = await prisma.user.create({
+    data: {
+      email: email.toLowerCase(),
+      username: email.split('@')[0],
+      supabaseId: supabaseUid,
+    },
+  });
+  
+  return { userId: newUser.id };
+}
+
+export async function loginUser(email: string, password: string) {
+  // We'll use Supabase directly from the frontend, this is just a stub
+  throw new Error('Method not implemented - use Supabase client directly');
 }
 
 export async function logoutUser() {
-  const { error } = await supabase.auth.signOut();
-  
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  // Using a variable instead of direct return
-  const result = true;
-  return result;
-}
-export async function loginUser(email: string, password: string) {
-  // Sign in with Supabase
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return {
-    user: data.user,
-    session: data.session,
-  };
+  // We'll use Supabase directly from the frontend, this is just a stub
+  throw new Error('Method not implemented - use Supabase client directly');
 }
 
- 
+// Add this function to your service file
+export async function linkWalletToUser(userId: string, walletAddress: string) {
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { walletAddress }
+    });
+    
+    return { success: true, userId: user.id };
+  } catch (error) {
+    console.error('Error linking wallet:', error);
+    throw new Error('Failed to link wallet to user');
+  }
+}

@@ -3,99 +3,116 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Anton } from 'next/font/google'
-import { useRouter } from 'next/navigation';
-import ParticleBackground from './ParticleBackground';
+import { useAuth } from '@/contexts/AuthContext'
+import ParticleBackground from './ParticleBackground'
+import router from 'next/router'
 
 // Anton font for headings
 const anton = Anton({ weight: '400', subsets: ['latin'], display: 'swap' })
 
-export default function SignUpPage() {
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [agreeTerms, setAgreeTerms] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [glitchEffect, setGlitchEffect] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState(0); // 0-3 for password strength
-  const router = useRouter();
+export default function SignUp() {
+  const { signUp } = useAuth()
   
-  // Randomize glitch effect
-  useEffect(() => {
-    const glitchInterval = setInterval(() => {
-      setGlitchEffect(true)
-      setTimeout(() => setGlitchEffect(false), 200)
-    }, 3000)
-    
-    return () => clearInterval(glitchInterval)
-  }, []);
+  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [agreeTerms, setAgreeTerms] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [glitchEffect, setGlitchEffect] = useState(false)
+  const [passwordStrength, setPasswordStrength] = useState(0)
   
-  // Calculate password strength
-  useEffect(() => {
-    if (password.length === 0) {
-      setPasswordStrength(0);
-      return;
-    }
-    
-    let strength = 0;
-    if (password.length > 6) strength++;
-    if (password.match(/[A-Z]/)) strength++;
-    if (password.match(/[0-9]/)) strength++;
-    
-    setPasswordStrength(strength);
-  }, [password]);
+  // ... existing glitch effect and password strength code
   
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     
     if (password !== confirmPassword) {
-      setError("Passwords don't match");
-      return;
+      setError("Passwords don't match")
+      return
     }
     
     if (!agreeTerms) {
-      setError("You must agree to the terms and conditions");
-      return;
+      setError("You must agree to the terms and conditions")
+      return
     }
     
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
     
     try {
-      // Call backend register endpoint
-      const response = await fetch('http://localhost:4000/auth/register', {
+      await signUp(email, password, username)
+      // Navigation is handled in the AuthContext
+    } catch (err: any) {
+      setError(err.message || 'Registration failed')
+      setLoading(false)
+    }
+  }
+  
+  const handleWalletConnect = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Check if Phantom wallet is installed
+      if (!window.phantom?.solana) {
+        throw new Error('Phantom wallet not found. Please install the Phantom extension.');
+      }
+      
+      // Connect to wallet
+      const provider = window.phantom.solana;
+      const { publicKey } = await provider.connect();
+      const walletAddress = publicKey.toString();
+      
+      // Generate nonce for signing
+      const nonce = Math.floor(Math.random() * 1000000).toString();
+      const message = `Sign this message to authenticate with ChainArena: ${nonce}`;
+      
+      // Encode the message for signing
+      const encodedMessage = new TextEncoder().encode(message);
+      
+      // Request the wallet to sign the message
+      const signature = await provider.signMessage(encodedMessage, 'utf8');
+      
+      // Convert Uint8Array to Base64
+      const signatureBase64 = btoa(
+        Array.from(new Uint8Array(signature))
+          .map(val => String.fromCharCode(val))
+          .join('')
+      );
+      
+      // Now authenticate with your backend
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/wallet-auth`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          email,
-          password,
-          name: username  // Your backend expects 'name' for the username
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wallet_address: walletAddress,
+          signature: signatureBase64,
+          message,
+          nonce
+        })
       });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Wallet authentication failed');
+      }
       
       const data = await response.json();
       
-      if (!response.ok) {
-        throw new Error(data.error || 'Registration failed');
+      // Handle the response appropriately
+      if (data.token) {
+        router.push(`/connect-email?token=${data.token}`);
       }
       
-      // Redirect to sign-in page after successful registration
-      router.push('/signin?registered=true');
-      
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+    } catch (err: any) {
+      setError(err.message || 'Failed to connect wallet');
+    } finally {
       setLoading(false);
     }
-  };
-
-  const handleWalletConnect = () => {
-    // Will implement Solana wallet connection here
-    setError('Wallet connection coming soon');
-  };
-
+  }
+ 
   return (
     <main className="min-h-screen bg-black text-white overflow-hidden pt-20">
       <ParticleBackground />

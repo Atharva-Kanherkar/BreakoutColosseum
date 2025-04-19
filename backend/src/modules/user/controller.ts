@@ -57,4 +57,28 @@ export const getUserById = async (req: Request, res: Response) => {
   }
 };
 
- 
+ // Change these references from service to userService:
+
+ // Make sure these are exported from the controller file
+export const getSessions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Use userService instead of service
+    const sessions = await userService.getUserSessions(req.user.id);
+    res.json({ sessions });
+  } catch (error: any) {
+    console.error('Error fetching user sessions:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch sessions' });
+  }
+};
+
+export const terminateSession = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    // Use userService instead of service
+    await userService.terminateSession(id, req.user.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error terminating session:', error);
+    res.status(500).json({ error: error.message || 'Failed to terminate session' });
+  }
+};

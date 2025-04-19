@@ -18,5 +18,8 @@ router.put('/profile', authenticate, validateUpdateProfile, userController.updat
 // Admin routes - system admins only (special flag in user model)
 router.get('/users', authenticate, isSystemAdmin, userController.getUsers);
 router.get('/users/:id', authenticate, isSystemAdmin, userController.getUserById);
+// Add these endpoints
+router.get('/sessions', authenticate, userController.getSessions);
+router.delete('/sessions/:id', authenticate, userController.terminateSession);
   
 export default router;

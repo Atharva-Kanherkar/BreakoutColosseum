@@ -184,4 +184,37 @@ export const getUsers = async (page = 1, limit = 10, search?: string) => {
   };
 };
 
- 
+export async function getUserSessions(userId: string) {
+  // If you're not tracking sessions in your database yet,
+  // you'll need to implement that first
+  
+  // For now, you could return mock data:
+  return [
+    {
+      id: "current-session",
+      device: "Current Browser",
+      location: "Your Location",
+      lastActive: new Date().toISOString(),
+      current: true
+    }
+  ];
+  
+  // Once you implement session tracking, replace with:
+  // return prisma.session.findMany({
+  //   where: { userId },
+  //   orderBy: { lastActive: 'desc' }
+  // });
+}
+
+export async function terminateSession(sessionId: string, userId: string) {
+  // For now, just return success
+  return { success: true };
+  
+  // Once you implement session tracking:
+  // return prisma.session.delete({
+  //   where: {
+  //     id: sessionId,
+  //     userId
+  //   }
+  // });
+}

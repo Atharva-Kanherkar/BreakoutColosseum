@@ -1,23 +1,34 @@
-'use client'
+ 'use client'
 
 import { useState, useEffect } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { Anton } from 'next/font/google'
-import ParticleBackground from './ParticleBackground';
-import router from 'next/router'
+import { useAuth } from '@/contexts/AuthContext'
+import ParticleBackground from './ParticleBackground'
 
 // Anton font for headings
 const anton = Anton({ weight: '400', subsets: ['latin'], display: 'swap' })
 
-export default function SignInPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [glitchEffect, setGlitchEffect] = useState(false);
+export default function SignIn() {
+  const { signIn } = useAuth()
+  const searchParams = useSearchParams()
   
-  // Randomize glitch effect
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [glitchEffect, setGlitchEffect] = useState(false)
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
+  
+  // Show success message if redirected from registration
+  useEffect(() => {
+    if (searchParams?.get('registered') === 'true') {
+      setShowSuccessMessage(true)
+      setTimeout(() => setShowSuccessMessage(false), 5000)
+    }
+  }, [searchParams])
+  
   useEffect(() => {
     const glitchInterval = setInterval(() => {
       setGlitchEffect(true)
@@ -25,46 +36,25 @@ export default function SignInPage() {
     }, 3000)
     
     return () => clearInterval(glitchInterval)
-  }, []);
+  }, [])
   
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
     
-     
     try {
-        // Call backend login endpoint
-        const response = await fetch('http://localhost:4000/auth/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email, password }),
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.error || 'Login failed');
-        }
-        
-        // Save the session token for authenticated requests
-        localStorage.setItem('token', data.session.access_token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        
-        // Redirect to dashboard
-        router.push('/dashboard');
-        
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Sign in failed');
-        setLoading(false);
-      }
-    };
-    const handleWalletConnect = async () => {
-        // Will implement Solana wallet connection here
-        setError('Wallet connection coming soon');
-      };
+      await signIn(email, password)
+      // Navigation is handled in the AuthContext
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in')
+      setLoading(false)
+    }
+  }
+  
+ 
+     
+   
   
 
   return (

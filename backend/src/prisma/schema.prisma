@@ -31,6 +31,8 @@ model User {
   updatedAt            DateTime                @updatedAt
   supabaseId           String?                 @unique
   isAdmin             Boolean                @default(false)
+ 
+
   // Tournaments hosted by this user
   hostedTournaments    Tournament[]            @relation("HostedTournaments")
   // Tournaments this user is participating in (via TournamentParticipant)
