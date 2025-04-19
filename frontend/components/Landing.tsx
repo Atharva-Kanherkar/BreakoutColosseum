@@ -1,4 +1,4 @@
- 'use client'
+'use client'
 
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
@@ -270,52 +270,46 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Spacer for fixed features section */}
-      <div className="features-spacer"></div>
-
-      {/* Fixed Features Section */}
-      <section className="fixed-features">
+      {/* Features Section - Changed from fixed to normal section */}
+      <section className="py-24 bg-black border-t border-red-900/30">
         <div className="container mx-auto px-4">
-          {/* Small drag handle indicator */}
-          <div className="w-20 h-1 bg-red-600/50 mx-auto mb-4 rounded-full"></div>
-          
           <h2 className={`${anton.className} text-3xl sm:text-4xl md:text-5xl mb-12 text-center text-red-600`}>
             FEATURES
           </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 mx-auto max-w-6xl">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mx-auto max-w-6xl">
             {/* Tournament Feature */}
-            <div className="feature-card border border-red-900/30 bg-black/80 p-6 backdrop-blur-sm relative">
+            <div className="feature-card border border-red-900/30 bg-black/80 p-6 backdrop-blur-sm relative h-full flex flex-col">
               <div className="absolute -top-5 -left-5 w-10 h-10 bg-red-600 flex items-center justify-center">
                 <span className="font-mono font-bold">01</span>
               </div>
               <h3 className="font-mono text-xl mb-4 text-red-500">TOURNAMENTS</h3>
-              <p className="text-gray-400 mb-6">Join competitive gaming tournaments with real crypto prizes. Compete in daily, weekly, and monthly events across multiple games.</p>
-              <div className="h-1 w-full bg-red-900/30 relative">
+              <p className="text-gray-400 mb-auto">Join competitive gaming tournaments with real crypto prizes. Compete in daily, weekly, and monthly events across multiple games.</p>
+              <div className="h-1 w-full bg-red-900/30 relative mt-6">
                 <div className="h-full w-2/3 bg-red-600"></div>
               </div>
             </div>
             
             {/* Teams Feature */}
-            <div className="feature-card border border-red-900/30 bg-black/80 p-6 backdrop-blur-sm relative">
+            <div className="feature-card border border-red-900/30 bg-black/80 p-6 backdrop-blur-sm relative h-full flex flex-col">
               <div className="absolute -top-5 -left-5 w-10 h-10 bg-red-600 flex items-center justify-center">
                 <span className="font-mono font-bold">02</span>
               </div>
               <h3 className="font-mono text-xl mb-4 text-red-500">TEAMS</h3>
-              <p className="text-gray-400 mb-6">Form esports teams, recruit players, and compete together. Team management system with performance analytics and role assignments.</p>
-              <div className="h-1 w-full bg-red-900/30 relative">
+              <p className="text-gray-400 mb-auto">Form esports teams, recruit players, and compete together. Team management system with performance analytics and role assignments.</p>
+              <div className="h-1 w-full bg-red-900/30 relative mt-6">
                 <div className="h-full w-3/4 bg-red-600"></div>
               </div>
             </div>
             
-            {/* Solana Integration */}
-            <div className="feature-card border border-red-900/30 bg-black/80 p-6 backdrop-blur-sm relative">
+            {/* Blockchain Feature */}
+            <div className="feature-card border border-red-900/30 bg-black/80 p-6 backdrop-blur-sm relative h-full flex flex-col">
               <div className="absolute -top-5 -left-5 w-10 h-10 bg-red-600 flex items-center justify-center">
                 <span className="font-mono font-bold">03</span>
               </div>
               <h3 className="font-mono text-xl mb-4 text-red-500">BLOCKCHAIN</h3>
-              <p className="text-gray-400 mb-6">Built on Solana for lightning-fast transactions and low fees. Win rewards, trade NFTs, and track all your assets securely on-chain.</p>
-              <div className="h-1 w-full bg-red-900/30 relative">
+              <p className="text-gray-400 mb-auto">Built on Solana for lightning-fast transactions and low fees. Win rewards, trade NFTs, and track all your assets securely on-chain.</p>
+              <div className="h-1 w-full bg-red-900/30 relative mt-6">
                 <div className="h-full w-1/2 bg-red-600"></div>
               </div>
             </div>
@@ -323,25 +317,35 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Stats Section */}
+      {/* Clear divider between sections */}
+      <div className="relative h-24 overflow-hidden">
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-full h-px bg-gradient-to-r from-transparent via-red-600/50 to-transparent"></div>
+        </div>
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45">
+          <div className="bg-red-600/30 w-8 h-8 transform rotate-45"></div>
+        </div>
+      </div>
+
+      {/* Stats Section with Improved Alignment */}
       <section className="py-16 bg-black relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-pattern opacity-20"></div>
         
         <div className="container mx-auto px-4 z-10 relative">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="text-center">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8 mx-auto max-w-6xl">
+            <div className="text-center flex flex-col items-center justify-center">
               <div className={`${anton.className} text-3xl sm:text-4xl md:text-5xl text-red-600 glitch-counter`} data-text="100K+">100K+</div>
               <p className="font-mono text-sm mt-2 text-gray-400">ACTIVE PLAYERS</p>
             </div>
-            <div className="text-center">
+            <div className="text-center flex flex-col items-center justify-center">
               <div className={`${anton.className} text-3xl sm:text-4xl md:text-5xl text-red-600 glitch-counter`} data-text="5K+">5K+</div>
               <p className="font-mono text-sm mt-2 text-gray-400">TOURNAMENTS</p>
             </div>
-            <div className="text-center">
+            <div className="text-center flex flex-col items-center justify-center">
               <div className={`${anton.className} text-3xl sm:text-4xl md:text-5xl text-red-600 glitch-counter`} data-text="$2M+">$2M+</div>
               <p className="font-mono text-sm mt-2 text-gray-400">PRIZES AWARDED</p>
             </div>
-            <div className="text-center">
+            <div className="text-center flex flex-col items-center justify-center">
               <div className={`${anton.className} text-3xl sm:text-4xl md:text-5xl text-red-600 glitch-counter`} data-text="12K+">12K+</div>
               <p className="font-mono text-sm mt-2 text-gray-400">TEAMS REGISTERED</p>
             </div>
@@ -349,20 +353,20 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* CTA Section with Improved Alignment */}
       <section className="py-24 bg-gradient-to-b from-gray-900 to-black relative">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className={`${anton.className} text-3xl sm:text-4xl md:text-5xl mb-6 text-white`}>
+            <h2 className={`${anton.className} text-3xl sm:text-5xl md:text-6xl mb-6 text-white leading-tight`}>
               READY TO <span className="text-red-600">DOMINATE</span> THE ARENA?
             </h2>
-            <p className="text-gray-400 mb-10 text-lg">
+            <p className="text-gray-400 mb-10 text-lg max-w-2xl mx-auto">
               Join thousands of players already competing in the Chain Arena ecosystem. 
               Connect your wallet, form your team, and start playing today.
             </p>
             
             <button 
-              className="cyber-glitch-btn relative overflow-hidden font-mono text-base font-semibold uppercase tracking-wider"
+              className="cyber-glitch-btn relative overflow-hidden font-mono text-base font-semibold uppercase tracking-wider mx-auto"
               onClick={() => {
                 // Try to play audio when user interacts with buttons too
                 if (audioRef.current && !audioPlaying) {
