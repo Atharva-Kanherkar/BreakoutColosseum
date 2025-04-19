@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import '../styles/navbar.css';
+
 
 :root {
   --background: #ffffff;
