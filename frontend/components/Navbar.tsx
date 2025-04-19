@@ -1,8 +1,10 @@
-'use client'
+ 'use client'
 
 import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
 import { Anton } from 'next/font/google'
+import { useRouter } from 'next/navigation'  // Only use this import for App Router
+// Remove this line: import router from 'next/router'
 
 // Anton font for the logo
 const anton = Anton({ weight: '400', subsets: ['latin'], display: 'swap' })
@@ -16,6 +18,7 @@ const navItems = [
 ]
 
 export default function Navbar() {
+  const router = useRouter() // Initialize the router hook here
   const [active, setActive] = useState('HOME')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -23,6 +26,16 @@ export default function Navbar() {
   const [loaded, setLoaded] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const logoRef = useRef<HTMLDivElement>(null)
+  
+  // Update these functions to use the router instance
+  const handleSignUp = () => {
+    router.push('/signup')
+  }
+  
+  const handleSignIn = () => {
+    router.push('/signin')
+  }
+
   
   // Close mobile menu when screen size changes
   useEffect(() => {
@@ -130,6 +143,8 @@ export default function Navbar() {
           <div className="hidden sm:block">
             {!isLoggedIn ? (
               <button 
+              onClick={handleSignUp}  
+
                 className="sign-in-btn relative overflow-hidden font-mono text-xs lg:text-sm font-semibold uppercase tracking-wider
                   px-4 py-2 text-white bg-red-600 border border-red-600
                   hover:bg-red-500 hover:shadow-md hover:shadow-red-500/30 
@@ -141,7 +156,7 @@ export default function Navbar() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                           d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                   </svg>
-                  SIGN_IN
+                  SIGN_UP
                 </span>
               </button>
             ) : (
