@@ -91,6 +91,10 @@ import {
   
       // Verify recipient is the platform wallet
       const expectedRecipient = PLATFORM_FEE_ADDRESS;
+      if (!expectedRecipient) {
+        console.error("Expected recipient address is undefined. Check your PLATFORM_FEE_ADDRESS or PLATFORM_WALLET_ADDRESS environment variables.");
+        return false;
+      }
       
       // Check all instructions in the transaction
       const instructions = tx.transaction.message.instructions;
