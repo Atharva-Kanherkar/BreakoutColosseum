@@ -124,7 +124,7 @@ export default function TournamentHostDashboard() {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/tournaments/${tournamentId}/status`,
         {
-          method: 'PATCH',
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session.access_token}`

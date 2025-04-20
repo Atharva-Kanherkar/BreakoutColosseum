@@ -21,7 +21,7 @@ const app = express();
 const port = process.env.PORT || 4000;
 const allowedOrigins = [
   'http://localhost:3000', // Your local frontend dev server
-  'https://your-frontend-render-url.onrender.com' // Your deployed frontend URL (replace this!)
+  'https://chainarena.vercel.app' // Your deployed frontend URL (replace this!)
  
 ];
 app.use(cors({
