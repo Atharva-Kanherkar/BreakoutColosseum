@@ -68,7 +68,8 @@ export default function CreateTournament() {
       
       const data = await response.json()
       toast.success('Tournament created successfully!')
-      router.push(`/tournaments/${data.id}`)
+      router.push(`/tournaments/${data.id}/host`)
+
     } catch (error: any) {
       toast.error(error.message || 'Failed to create tournament')
       console.error('Error creating tournament:', error)

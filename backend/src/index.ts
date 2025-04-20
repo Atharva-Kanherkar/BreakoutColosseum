@@ -34,7 +34,7 @@ app.use(cors({
     }
     return callback(null, true);
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Ensure OPTIONS is included
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'], // Ensure OPTIONS is included
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
   maxAge: 86400

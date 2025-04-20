@@ -88,7 +88,7 @@ export default function TournamentHostDashboard() {
         
         // Fetch matches
         const matchesResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/tournaments/${tournamentId}/matches`,
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/matches/tournament/${tournamentId}`,
           {
             headers: {
               Authorization: `Bearer ${session.access_token}`
