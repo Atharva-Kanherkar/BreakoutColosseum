@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'; // Added useMemo
+import { useState, useEffect, useMemo, useCallback } from 'react'; // Added useCallback and useMemo
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Anton } from 'next/font/google';
@@ -68,7 +68,8 @@ interface PublicParticipant {
 export default function TournamentDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { session, user } = useAuth(); // Get session and user info
+  // Destructure isLoading and rename it to authLoading
+  const { session, user, isLoading: authLoading } = useAuth(); // Get session and user info
   const tournamentId = params.id as string;
 
   // Wallet Adapter Hooks
@@ -77,9 +78,10 @@ export default function TournamentDetailPage() {
 
   const [tournament, setTournament] = useState<TournamentPublicDetails | null>(null);
   const [participants, setParticipants] = useState<PublicParticipant[]>([]); // State for participants
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // This is for data fetching
   const [error, setError] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isUnregistering, setIsUnregistering] = useState(false); // Added state for unregistering
 
   // Platform Fee Address from environment
   const platformFeeAddress = useMemo(() => {
@@ -89,24 +91,29 @@ export default function TournamentDetailPage() {
       } catch (e) {
           console.error("Invalid Platform Fee Address in env:", process.env.NEXT_PUBLIC_PLATFORM_FEE_ADDRESS, e);
           // Show toast only once if address is invalid
-          if (!platformFeeAddress) { // Avoid repeated toasts on re-renders
+          // Avoid repeated toasts on re-renders by checking if it was already null
+          // if (!platformFeeAddress) { // This check inside useMemo might not work as expected
              toast.error("Platform configuration error. Cannot process payments.");
-          }
+          // }
           return null;
       }
   }, []); // Dependency array is empty as env var doesn't change at runtime
 
 
-  useEffect(() => {
-    const fetchTournamentDetails = async () => {
+  // --- Fetch Data ---
+  const fetchData = useCallback(async () => { // Wrap fetch logic in useCallback
       if (!tournamentId) return;
 
       setIsLoading(true);
       setError(null);
 
       try {
-        // Fetch main tournament details (ensure prize is included by backend)
-        const tournamentRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/tournaments/${tournamentId}`);
+        // Fetch main tournament details and participants in parallel
+        const [tournamentRes, participantsRes] = await Promise.all([
+             fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/tournaments/${tournamentId}`),
+             fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/tournaments/${tournamentId}/participants?limit=1000`) // Fetch all participants
+        ]);
+
 
         if (!tournamentRes.ok) {
           if (tournamentRes.status === 404) {
@@ -119,12 +126,13 @@ export default function TournamentDetailPage() {
         setTournament(tournamentData);
 
         // Fetch participants
-        const participantsRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/tournaments/${tournamentId}/participants`);
         if (participantsRes.ok) {
             const participantsData = await participantsRes.json();
-            setParticipants(participantsData.participants || []); // Adjust key if needed
+            // Ensure participantsData.participants is an array before setting
+            setParticipants(Array.isArray(participantsData.participants) ? participantsData.participants : []);
         } else {
             console.warn("Could not fetch participant list for public view.");
+            setParticipants([]); // Set empty array on failure
             // Don't throw error, just show empty list or message
         }
 
@@ -138,13 +146,20 @@ export default function TournamentDetailPage() {
       } finally {
         setIsLoading(false);
       }
-    };
+    }, [tournamentId]); // Dependency for useCallback
 
-    fetchTournamentDetails();
-  }, [tournamentId]); // Dependency array includes tournamentId
+  useEffect(() => {
+    fetchData(); // Call the memoized fetch function
+  }, [fetchData]); // useEffect depends on the memoized function
+
 
   // --- Registration Logic ---
   const handleRegister = async () => {
+    // Add null check for tournament early
+    if (!tournament) {
+      toast.error("Tournament data not loaded yet.");
+      return;
+    }
     // Initial checks
     if (!session || !user) {
       toast.error("You must be logged in to register.");
@@ -152,10 +167,6 @@ export default function TournamentDetailPage() {
     }
      if (!publicKey || !sendTransaction) {
       toast.error("Please connect your Solana wallet first.");
-      return;
-    }
-    if (!tournament) {
-      toast.error("Tournament data not loaded yet.");
       return;
     }
      if (!platformFeeAddress) {
@@ -175,9 +186,9 @@ export default function TournamentDetailPage() {
         toast.error("You are already registered for this tournament.");
         return;
     }
-    // Check capacity client-side
-    const participantCount = tournament.isTeamBased ? tournament._count.teams : tournament._count.participants;
-    if (tournament.maxParticipants && participantCount >= tournament.maxParticipants) {
+    // Check capacity client-side using participants.length for immediate feedback
+    const currentParticipantCount = participants.length;
+    if (tournament.maxParticipants && currentParticipantCount >= tournament.maxParticipants) {
         toast.error("Tournament has reached maximum capacity.");
         return;
     }
@@ -188,6 +199,7 @@ export default function TournamentDetailPage() {
 
     try {
       // --- Handle Entry Fee Payment ---
+      // tournament is guaranteed non-null here
       const entryFeeRequired = tournament.prize?.entryFee && parseFloat(tournament.prize.entryFee) > 0;
 
       if (entryFeeRequired) {
@@ -228,12 +240,6 @@ export default function TournamentDetailPage() {
 
           const fromAta = await getAssociatedTokenAddress(mintPublicKey, publicKey);
           const toAta = await getAssociatedTokenAddress(mintPublicKey, platformFeeAddress);
-
-          // Check if user has the source ATA and sufficient balance (optional but good UX)
-          // const fromAtaAccount = await connection.getTokenAccountBalance(fromAta).catch(() => null);
-          // if (!fromAtaAccount || new BN(fromAtaAccount.value.amount).lt(amountInSmallestUnit)) {
-          //    throw new Error(`Insufficient balance of the required token.`);
-          // }
 
           transaction.add(
             createTransferInstruction(
@@ -294,10 +300,9 @@ export default function TournamentDetailPage() {
       }
 
       toast.success('Successfully registered! Your registration may require host approval.');
-      // Update participants list locally for immediate feedback (optional)
-      // setParticipants(prev => [...prev, { /* new participant data from response? */ }]);
-      router.push(`/tournaments/${tournamentId}/participant`); // Redirect to participant view
-      // No need for router.refresh() if redirecting
+      // Re-fetch data to update participant list and count accurately from server
+      fetchData();
+      // router.push(`/tournaments/${tournamentId}/participant`); // Optional redirect
 
     } catch (err: any) {
       toast.dismiss(); // Dismiss any active loading toasts
@@ -323,6 +328,57 @@ export default function TournamentDetailPage() {
   // --- End Registration Logic ---
 
 
+  // --- Unregistration Logic ---
+  const handleUnregister = async () => {
+    // Add null check for tournament early
+    if (!tournament) {
+      toast.error("Tournament data not loaded yet.");
+      return;
+    }
+    if (!session || !user) {
+      toast.error("Cannot unregister at this time.");
+      return;
+    }
+    // Optional: Add confirmation dialog
+    if (!window.confirm("Are you sure you want to unregister from this tournament? Entry fees are typically non-refundable.")) {
+        return;
+    }
+
+    setIsUnregistering(true);
+    const unregisterToastId = toast.loading('Processing unregistration...');
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/tournaments/${tournamentId}/unregister`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      toast.dismiss(unregisterToastId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to unregister (${response.status})`);
+      }
+
+      toast.success('Successfully unregistered.');
+      // Update participants list locally for immediate feedback
+      setParticipants(prev => prev.filter(p => p.user?.id !== user.id));
+      // Re-fetch data to update participant list and count accurately from server
+      fetchData();
+
+    } catch (err: any) {
+      toast.dismiss(unregisterToastId); // Ensure loading toast is dismissed on error
+      console.error("Unregistration error:", err);
+      toast.error(err.message || 'Unregistration failed.');
+    } finally {
+      setIsUnregistering(false);
+    }
+  };
+  // --- End Unregistration Logic ---
+
+
   // Helper to format date
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A'
@@ -336,6 +392,7 @@ export default function TournamentDetailPage() {
   // Get status color helper
   const getStatusStyles = (status: string) => {
      switch (status) {
+      case 'DRAFT': return 'bg-gray-700/30 text-gray-400 border-gray-600/50';
       case 'REGISTRATION_OPEN': return 'bg-green-900/30 text-green-400 border-green-600/50';
       case 'REGISTRATION_CLOSED': return 'bg-yellow-900/30 text-yellow-400 border-yellow-600/50';
       case 'ONGOING': return 'bg-blue-900/30 text-blue-400 border-blue-600/50';
@@ -347,7 +404,8 @@ export default function TournamentDetailPage() {
 
   // --- Render Logic ---
 
-  if (isLoading) {
+  // Use authLoading from useAuth hook here
+  if (isLoading || authLoading) {
     return (
       <main className="min-h-screen bg-black text-white flex items-center justify-center">
         <ParticleBackground />
@@ -391,7 +449,7 @@ export default function TournamentDetailPage() {
     )
   }
 
-  // If loading finished and no error, but tournament is still null (shouldn't happen often)
+  // Type guard: If we reach here, tournament is NOT null
   if (!tournament) {
      return (
       <main className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -406,14 +464,16 @@ export default function TournamentDetailPage() {
     )
   }
 
-  // Derived states based on loaded tournament data
-  const participantCount = tournament.isTeamBased ? tournament._count.teams : tournament._count.participants;
+  // --- Derived states can now safely access tournament ---
+  // Use participants.length for client-side count reflecting local updates
+  const participantCount = participants.length;
   const maxCapacity = tournament.maxParticipants;
   const isFull = maxCapacity !== null && participantCount >= maxCapacity;
-  const isUserRegistered = session && participants.some(p => p.user?.id === user?.id);
-  const isUserHost = session && tournament?.host?.id === user?.id;
-  const canRegister = session && !isUserRegistered && !isUserHost && tournament.status === 'REGISTRATION_OPEN' && !isFull;
-  const entryFeeText = tournament.prize?.entryFee && parseFloat(tournament.prize.entryFee) > 0
+  const isUserRegistered = session && user && participants.some(p => p.user?.id === user.id);
+  const isUserHost = session && user && tournament.host?.id === user.id; // Safe access
+  const canRegister = session && !isUserRegistered && !isUserHost && tournament.status === 'REGISTRATION_OPEN' && !isFull; // Safe access
+  const canUnregister = session && isUserRegistered && !isUserHost && tournament.status === 'REGISTRATION_OPEN'; // Condition for unregister button
+  const entryFeeText = tournament.prize?.entryFee && parseFloat(tournament.prize.entryFee) > 0 // Safe access
     ? `(${tournament.prize.entryFee} ${tournament.prize.tokenType})`
     : '';
 
@@ -424,7 +484,7 @@ export default function TournamentDetailPage() {
       <div className="absolute inset-0 bg-grid-pattern opacity-10 z-0"></div>
 
       <div className="container mx-auto px-4 z-10 relative pt-10">
-        {/* Header */}
+        {/* Header - Safe to access tournament.name etc. here */}
         <div className="mb-6 text-center">
           <h1 className={`${anton.className} text-5xl mb-2`}>
             <span className="text-white">{tournament.name}</span>
@@ -440,8 +500,8 @@ export default function TournamentDetailPage() {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex justify-center space-x-4 mb-8">
+        {/* Action Buttons - Derived states are calculated correctly now */}
+        <div className="flex flex-wrap justify-center items-center gap-4 mb-8"> {/* Use flex-wrap and gap */}
           {session && isUserHost && (
              <Link href={`/tournaments/${tournament.id}/host`} className="font-mono text-sm uppercase tracking-wider px-6 py-3 text-white bg-blue-800/50 border border-blue-800 hover:bg-blue-700/50 transition-all duration-300">
                Manage Tournament
@@ -453,7 +513,18 @@ export default function TournamentDetailPage() {
              </Link>
           )}
 
-          {/* Updated Register Button Logic */}
+          {/* Unregister Button */}
+          {canUnregister && (
+            <button
+              onClick={handleUnregister}
+              disabled={isUnregistering}
+              className="font-mono text-sm uppercase tracking-wider px-6 py-3 text-white bg-gray-700/50 border border-gray-700 hover:bg-gray-600/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isUnregistering ? 'Processing...' : 'Unregister'}
+            </button>
+          )}
+
+          {/* Register Button Logic */}
           {canRegister && (
             <button
               onClick={handleRegister}
@@ -484,7 +555,7 @@ export default function TournamentDetailPage() {
         </div>
 
 
-        {/* Main Content Grid */}
+        {/* Main Content Grid - Safe to access tournament properties */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column (Details) */}
           <div className="lg:col-span-1 space-y-6">
@@ -497,6 +568,7 @@ export default function TournamentDetailPage() {
                 <p><strong className="text-gray-400 w-32 inline-block">Ends:</strong> {formatDate(tournament.endDate)}</p>
                 <p><strong className="text-gray-400 w-32 inline-block">Reg. Deadline:</strong> {formatDateTime(tournament.registrationDeadline)}</p>
                 <p><strong className="text-gray-400 w-32 inline-block">Type:</strong> {tournament.isTeamBased ? `Team (${tournament.teamSize}v${tournament.teamSize})` : 'Individual'}</p>
+                {/* Use participantCount (derived from participants.length) for display */}
                 <p><strong className="text-gray-400 w-32 inline-block">Participants:</strong> {participantCount} {maxCapacity ? `/ ${maxCapacity}` : ''}</p>
                 {tournament.minParticipants && <p><strong className="text-gray-400 w-32 inline-block">Min Players:</strong> {tournament.minParticipants}</p>}
                 {/* Display Entry Fee Info */}
@@ -521,6 +593,7 @@ export default function TournamentDetailPage() {
             <div className="bg-black/60 backdrop-blur-lg border border-red-900/30 p-6 relative">
               <div className="absolute -top-1 -left-1 w-6 h-6 border-t border-l border-red-600"></div>
               <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b border-r border-red-600"></div>
+              {/* Use participants.length for accurate count */}
               <h2 className={`${anton.className} text-2xl mb-4`}><span className="text-red-600">REGISTERED</span> ({participants.length})</h2>
               {participants.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto pr-2">
