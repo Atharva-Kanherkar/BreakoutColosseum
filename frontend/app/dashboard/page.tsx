@@ -79,7 +79,7 @@ export default function Dashboard() {
       if (!session) return
       
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/profile`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/profile`, {
           headers: {
             Authorization: `Bearer ${session.access_token}`
           }
