@@ -19,16 +19,25 @@ import 'dotenv/config';
 
 const app = express();
 const port = process.env.PORT || 4000;
-
-// Enhanced CORS configuration
+const allowedOrigins = [
+  'http://localhost:3000', // Your local frontend dev server
+  'https://your-frontend-render-url.onrender.com' // Your deployed frontend URL (replace this!)
+ 
+];
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://yourdomain.com'] // Whitelist in production
-    : ['http://localhost:3000'], // Allow local frontend in dev
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Ensure OPTIONS is included
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-  maxAge: 86400 // Cache preflight requests for 24 hours
+  maxAge: 86400
 }));
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
