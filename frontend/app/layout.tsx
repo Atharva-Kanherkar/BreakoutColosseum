@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
- 
+import { Toaster } from 'react-hot-toast'
  import { AuthProvider } from '@/contexts/AuthContext'
 import ClientOnly from "@/components/ClientOnly";
 // Use Inter font from Google - highly reliable
@@ -23,9 +23,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-      <ClientOnly>
+        <ClientOnly>
           <AuthProvider>
             {children}
+            <Toaster position="top-right" />
           </AuthProvider>
         </ClientOnly>
       </body>
