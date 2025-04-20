@@ -31,7 +31,7 @@ model User {
   updatedAt            DateTime                @updatedAt
   supabaseId           String?                 @unique
   isAdmin             Boolean                @default(false)
- 
+   role     UserRole? @default(PLAYER)
 
   // Tournaments hosted by this user
   hostedTournaments    Tournament[]            @relation("HostedTournaments")
@@ -123,6 +123,8 @@ model Match {
   minParticipants     Int?
   maxParticipants     Int?
   teamSize            Int?
+  organizerId  String?
+
   isTeamBased         Boolean          @default(false)
     matches      Match[]
 prize              TournamentPrize?
@@ -134,6 +136,12 @@ prize              TournamentPrize?
   @@index([hostId])
   TournamentAnnouncement TournamentAnnouncement[]
 }
+enum UserRole {
+  PLAYER
+  ORGANIZER
+  ADMIN
+}
+
 
  // Updates to TournamentParticipant model
 model TournamentParticipant {
