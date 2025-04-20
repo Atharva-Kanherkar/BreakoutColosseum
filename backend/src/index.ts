@@ -1,6 +1,8 @@
 import express from "express";
 import dotenv from "dotenv";
 import path from "path";
+dotenv.config({ path: path.resolve(__dirname, '../.env') }); // Adjust path if needed
+
 import cors from 'cors';
 
 import authRoutes from "./modules/auth/routes";
@@ -11,9 +13,9 @@ import matchRoutes from './modules/match/routes'
 import { standardLimiter, authLimiter } from './middlewares/rateLimit';
 import swaggerUi from 'swagger-ui-express';
 import { specs } from './utils/swagger';
-
+import 'dotenv/config';
 // Load environment variables
-dotenv.config({ path: path.resolve(__dirname, '.env') });
+ 
 
 const app = express();
 const port = process.env.PORT || 4000;
