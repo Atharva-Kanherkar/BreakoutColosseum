@@ -7,6 +7,7 @@ import Link from 'next/link'
 import ParticleBackground from '@/components/ParticleBackground'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
+import Navbar from '@/components/Navbar'
 
 const anton = Anton({ weight: '400', subsets: ['latin'], display: 'swap' })
 
@@ -140,6 +141,16 @@ export default function Dashboard() {
     
     fetchTournaments()
   }, [session])
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      toast.success('Signed out successfully')
+      router.push('/')
+    } catch (error) {
+      console.error('Error signing out:', error)
+      toast.error('Failed to sign out')
+    }
+  }
   
   // Fetch teams data
   useEffect(() => {
@@ -210,10 +221,13 @@ export default function Dashboard() {
   }
 
   return (
+    <>
+   
     <main className="min-h-screen bg-black text-white pb-20">
+
       <ParticleBackground />
       <div className="absolute inset-0 bg-grid-pattern opacity-10 z-0"></div>
-      
+ 
       <div className="container mx-auto px-4 z-10 relative pt-10">
         {/* Page Header */}
         <div className="mb-8">
@@ -547,5 +561,6 @@ export default function Dashboard() {
         </div>
       </div>
     </main>
+    </>
   )
 }

@@ -17,10 +17,10 @@ const navItems = [
   { name: 'SUPPORT', href: '/support' },
 ]
 
-export default function Navbar() {
+export default function Navbar({ isLoggedIn = false }) {
   const router = useRouter() // Initialize the router hook here
   const [active, setActive] = useState('HOME')
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+ 
   const [scrolled, setScrolled] = useState(false)
   const [logoHover, setLogoHover] = useState(false)
   const [loaded, setLoaded] = useState(false)
