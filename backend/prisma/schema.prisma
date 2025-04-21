@@ -31,7 +31,7 @@ model User {
   updatedAt            DateTime                @updatedAt
   supabaseId           String?                 @unique
   isAdmin             Boolean                @default(false)
- 
+ achievements Achievement[] 
 
   // Tournaments hosted by this user
   hostedTournaments    Tournament[]            @relation("HostedTournaments")
@@ -123,6 +123,7 @@ model Match {
   minParticipants     Int?
   maxParticipants     Int?
   teamSize            Int?
+achievements Achievement[] 
 
   isTeamBased         Boolean          @default(false)
     matches      Match[]
@@ -270,4 +271,22 @@ model PrizePayment {
   @@index([tournamentPrizeId])
   @@index([teamId])
   @@index([participantId])
+}
+model Achievement {
+  id           String     @id @default(cuid())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  userId       String     // The user who received the achievement
+  user         User       @relation(fields: [userId], references: [id])
+
+  tournamentId String     // The tournament the achievement relates to
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+
+  type         String     // Type of achievement (e.g., "WINNER_1ST", "PARTICIPANT")
+  mintAddress  String     @unique // The on-chain address of the cNFT
+  metadataUri  String     // URI pointing to the NFT's metadata
+
+  @@index([userId])
+  @@index([tournamentId])
 }

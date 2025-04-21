@@ -2,7 +2,7 @@
   "name": "game-backend",
   "version": "1.0.0",
   "engines": {
-    "node": "18.x" 
+    "node": "18.x"
   },
   "description": "",
   "main": "index.js",
@@ -15,6 +15,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@metaplex-foundation/mpl-bubblegum": "^4.4.0",
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
+    "@metaplex-foundation/umi": "^1.2.0",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.2.0",
+    "@metaplex-foundation/umi-uploader-nft-storage": "^1.2.0",
     "@prisma/client": "^6.6.0",
     "@sendgrid/mail": "^8.1.5",
     "@solana/spl-token": "^0.4.13",
