@@ -11,6 +11,8 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react'; // Impo
 import { PublicKey, SystemProgram, Transaction, LAMPORTS_PER_SOL } from '@solana/web3.js'; // Import web3.js classes
 import { getAssociatedTokenAddress, createTransferInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token'; // Import spl-token functions
 import BN from 'bn.js'; // Import BN for large number handling
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'; // <-- Import this
+
 
 const anton = Anton({ weight: '400', subsets: ['latin'], display: 'swap' });
 
@@ -505,6 +507,8 @@ export default function TournamentDetailPage() {
           </div>
         </div>
 
+        
+
         {/* Action Buttons - Derived states are calculated correctly now */}
         <div className="flex flex-wrap justify-center items-center gap-4 mb-8"> {/* Use flex-wrap and gap */}
           {session && isUserHost && (
@@ -519,7 +523,7 @@ export default function TournamentDetailPage() {
           )}
 
           {/* Unregister Button */}
-         
+          {canUnregister && ( // Show only if user can unregister
             <button
               onClick={handleUnregister}
               disabled={isUnregistering}
@@ -527,20 +531,35 @@ export default function TournamentDetailPage() {
             >
               {isUnregistering ? 'Processing...' : 'Unregister'}
             </button>
-       
-
-          {/* Register Button Logic */}
-          {canRegister && (
-            <button
-              onClick={handleRegister}
-              // Disable if registering, wallet not connected, or platform address missing
-              disabled={isRegistering || !publicKey || !platformFeeAddress}
-              className="font-mono text-sm uppercase tracking-wider px-6 py-3 text-white bg-red-800/50 border border-red-800 hover:bg-red-700/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              title={!publicKey ? "Connect your wallet to register" : (!platformFeeAddress ? "Platform payment address not configured" : "")}
-            >
-              {isRegistering ? 'Processing...' : `Register Now ${entryFeeText}`}
-            </button>
           )}
+
+          {/* --- MODIFIED Register/Connect Button Logic --- */}
+          {canRegister && (
+            <>
+              {!publicKey ? (
+                // Wallet not connected, show Connect button
+                <div className="flex flex-col items-center gap-1">
+                   <WalletMultiButton style={{ /* Optional: Add custom styles here if needed */ }} />
+                   <span className="text-xs text-gray-400 font-mono">Connect Wallet to Register</span>
+                </div>
+              ) : (
+                // Wallet connected, show Register button
+                <button
+                  onClick={handleRegister}
+                  // Disable only if registering or platform address missing
+                  disabled={isRegistering || !platformFeeAddress}
+                  className="font-mono text-sm uppercase tracking-wider px-6 py-3 text-white bg-red-800/50 border border-red-800 hover:bg-red-700/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  // Update title to only show platform address error if relevant
+                  title={!platformFeeAddress ? "Platform payment address not configured" : ""}
+                >
+                  {isRegistering ? 'Processing...' : `Register Now ${entryFeeText}`}
+                </button>
+              )}
+            </>
+          )}
+          {/* --- END MODIFIED Logic --- */}
+
+ 
 
           {!session && tournament.status === 'REGISTRATION_OPEN' && !isFull && (
              <Link href={`/login?redirect=/tournaments/${tournament.id}`} className="font-mono text-sm uppercase tracking-wider px-6 py-3 text-white bg-gray-700/50 border border-gray-700 hover:bg-gray-600/50 transition-all duration-300">
