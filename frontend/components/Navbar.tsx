@@ -125,17 +125,18 @@ export default function Navbar({ isLoggedIn = false }) {
         <div className="flex items-center space-x-4">
           {/* Connect Wallet button - Desktop and tablets */}
           <div className="hidden sm:block">
-            <button className="cyber-glitch-btn relative overflow-hidden font-mono text-xs lg:text-sm font-semibold uppercase tracking-wider">
+            <button
+             onClick={handleSignIn} className="cyber-glitch-btn relative overflow-hidden font-mono text-xs lg:text-sm font-semibold uppercase tracking-wider">
               <span className="cyber-glitch-btn-text flex items-center">
                 <svg className="w-3 h-3 lg:w-4 lg:h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                         d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
-                <span className="hidden xs:inline">CONNECT_WALLET</span>
+                <span className="hidden xs:inline">Sign In</span>
                 <span className="xs:hidden">WALLET</span>
               </span>
               <span className="cyber-glitch-btn-glitch"></span>
-              <span className="cyber-glitch-btn-label">CONNECT_WALLET</span>
+              <span className="cyber-glitch-btn-label">Sign In</span>
             </button>
           </div>
 

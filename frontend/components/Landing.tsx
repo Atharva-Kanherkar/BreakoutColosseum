@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Anton } from 'next/font/google'
 import ParticleBackground from './ParticleBackground';
-
+import { useRouter } from 'next/navigation'
 
 // Anton font for headings
 const anton = Anton({ weight: '400', subsets: ['latin'], display: 'swap' })
@@ -13,6 +13,7 @@ const anton = Anton({ weight: '400', subsets: ['latin'], display: 'swap' })
   
 export default function LandingPage() {
     // Add preloader states
+      const router = useRouter() // Initialize the router hook here
     const [loading, setLoading] = useState(true);
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [glitchText, setGlitchText] = useState(false)
@@ -21,7 +22,9 @@ export default function LandingPage() {
     const [audioPlaying, setAudioPlaying] = useState(false);
     const audioRef = useRef<HTMLAudioElement>(null);
     const [splashVisible, setSplashVisible] = useState(true);
-  
+    const handleSignUp = () => {
+      router.push('/signup')
+    }
     // Simulate loading progress
     useEffect(() => {
       // Simulate loading resources
@@ -375,50 +378,62 @@ useEffect(() => {
 
       {/* Features Section - Changed from fixed to normal section */}
       <section className="py-24 bg-black border-t border-red-900/30">
-  <div className="container mx-auto px-4">
-    <h2 className={`${anton.className} text-3xl sm:text-4xl md:text-5xl mb-12 text-center text-red-600`}>
-      FEATURES
-    </h2>
+        <div className="container mx-auto px-4">
+          <h2 className={`${anton.className} text-3xl sm:text-4xl md:text-5xl mb-12 text-center text-red-600`}>
+            FEATURES
+          </h2>
 
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mx-auto max-w-6xl">
-      {/* Tournament Feature */}
-      <div className="feature-card border border-red-900/30 bg-black/80 p-6 backdrop-blur-sm relative h-full flex flex-col">
-        <div className="absolute -top-5 -left-5 w-10 h-10 bg-red-600 flex items-center justify-center">
-          <span className="font-mono font-bold">01</span>
-        </div>
-        <h3 className="font-mono text-xl mb-4 text-red-500">Crypto-Powered Tournaments</h3>
-        <p className="text-gray-400 mb-auto">Compete in skill-based tournaments backed by real crypto rewards. Transparent prize pools, instant payouts, and on-chain proof of performance.</p>
-        <div className="h-1 w-full bg-red-900/30 relative mt-6">
-          <div className="h-full w-2/3 bg-red-600"></div>
-        </div>
-      </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mx-auto max-w-6xl">
+            {/* Tournament Feature */}
+            <div className="feature-card border border-red-900/30 bg-black/80 p-6 backdrop-blur-sm relative h-full flex flex-col">
+              <div className="absolute -top-5 -left-5 w-10 h-10 bg-red-600 flex items-center justify-center">
+                <span className="font-mono font-bold">01</span>
+              </div>
+              <h3 className="font-mono text-xl mb-4 text-red-500">Win Crypto & NFTs</h3>
+              {/* --- Updated Description --- */}
+              <p className="text-gray-400 mb-auto">
+                Dominate the competition and earn verifiable rewards. Win crypto instantly to your wallet and unlock exclusive, on-chain NFT achievements for your victories.
+              </p>
+              {/* --- End Updated Description --- */}
+              <div className="h-1 w-full bg-red-900/30 relative mt-6">
+                <div className="h-full w-2/3 bg-red-600"></div>
+              </div>
+            </div>
 
-      {/* Game Agnostic Feature */}
-      <div className="feature-card border border-red-900/30 bg-black/80 p-6 backdrop-blur-sm relative h-full flex flex-col">
-        <div className="absolute -top-5 -left-5 w-10 h-10 bg-red-600 flex items-center justify-center">
-          <span className="font-mono font-bold">02</span>
-        </div>
-        <h3 className="font-mono text-xl mb-4 text-red-500">Truly Game-Agnostic</h3>
-        <p className="text-gray-400 mb-auto">ChainArena supports any competitive game — from FPS to strategy. Bring your game, host events, and unify players under one platform.</p>
-        <div className="h-1 w-full bg-red-900/30 relative mt-6">
-          <div className="h-full w-3/4 bg-red-600"></div>
-        </div>
-      </div>
+            {/* Game Agnostic Feature */}
+            <div className="feature-card border border-red-900/30 bg-black/80 p-6 backdrop-blur-sm relative h-full flex flex-col">
+              <div className="absolute -top-5 -left-5 w-10 h-10 bg-red-600 flex items-center justify-center">
+                <span className="font-mono font-bold">02</span>
+              </div>
+              <h3 className="font-mono text-xl mb-4 text-red-500">Compete In Any Game</h3>
+              {/* --- Updated Description --- */}
+              <p className="text-gray-400 mb-auto">
+                Your game, our arena. ChainArena supports any competitive title, bringing diverse gaming communities together for organized play and blockchain-backed rewards.
+              </p>
+              {/* --- End Updated Description --- */}
+              <div className="h-1 w-full bg-red-900/30 relative mt-6">
+                <div className="h-full w-3/4 bg-red-600"></div>
+              </div>
+            </div>
 
-      {/* Solana Feature */}
-      <div className="feature-card border border-red-900/30 bg-black/80 p-6 backdrop-blur-sm relative h-full flex flex-col">
-        <div className="absolute -top-5 -left-5 w-10 h-10 bg-red-600 flex items-center justify-center">
-          <span className="font-mono font-bold">03</span>
+            {/* Solana Feature */}
+            <div className="feature-card border border-red-900/30 bg-black/80 p-6 backdrop-blur-sm relative h-full flex flex-col">
+              <div className="absolute -top-5 -left-5 w-10 h-10 bg-red-600 flex items-center justify-center">
+                <span className="font-mono font-bold">03</span>
+              </div>
+              <h3 className="font-mono text-xl mb-4 text-red-500">Solana Powered</h3>
+              {/* --- Updated Description --- */}
+              <p className="text-gray-400 mb-auto">
+                Experience the Solana advantage: benefit from blazing speed, ultra-low fees for payouts & entries, and provably fair results recorded directly on the blockchain.
+              </p>
+              {/* --- End Updated Description --- */}
+              <div className="h-1 w-full bg-red-900/30 relative mt-6">
+                <div className="h-full w-1/2 bg-red-600"></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <h3 className="font-mono text-xl mb-4 text-red-500">Solana-Native</h3>
-        <p className="text-gray-400 mb-auto">Optimized for speed and scale on Solana. Enjoy near-zero fees, instant transactions, and verifiable gaming achievements on-chain.</p>
-        <div className="h-1 w-full bg-red-900/30 relative mt-6">
-          <div className="h-full w-1/2 bg-red-600"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+      </section>
 
 
       {/* Clear divider between sections */}
@@ -544,6 +559,7 @@ useEffect(() => {
   </div>
 </section>
    
+ 
 
 {/* How It Works Section */}
 <section className="py-24 bg-black relative overflow-hidden">
@@ -564,7 +580,11 @@ useEffect(() => {
             </svg>
           </div>
           <h3 className="font-mono text-xl mb-3 text-red-500">CONNECT WALLET</h3>
-          <p className="text-gray-400">Link your Solana wallet to join tournaments and manage your earnings securely</p>
+          {/* --- Updated Description --- */}
+          <p className="text-gray-400">
+            Connect your Solana wallet – your secure gateway to enter tournaments, receive instant crypto payouts, and claim NFT achievements.
+          </p>
+          {/* --- End Updated Description --- */}
           <div className="absolute -top-1 -left-1 w-8 h-8 bg-red-600/80 flex items-center justify-center font-mono font-bold">
             01
           </div>
@@ -581,7 +601,11 @@ useEffect(() => {
             </svg>
           </div>
           <h3 className="font-mono text-xl mb-3 text-red-500">JOIN TOURNAMENTS</h3>
-          <p className="text-gray-400">Browse available tournaments and register to compete against other players</p>
+          {/* --- Updated Description --- */}
+          <p className="text-gray-400">
+            Find tournaments for your favorite games. Browse ongoing and upcoming events across various titles and register to compete.
+          </p>
+          {/* --- End Updated Description --- */}
           <div className="absolute -top-1 -left-1 w-8 h-8 bg-red-600/80 flex items-center justify-center font-mono font-bold">
             02
           </div>
@@ -598,7 +622,11 @@ useEffect(() => {
             </svg>
           </div>
           <h3 className="font-mono text-xl mb-3 text-red-500">FORM TEAMS</h3>
-          <p className="text-gray-400">Create or join teams, strategize with teammates, and dominate the competition</p>
+          {/* --- Updated Description --- */}
+          <p className="text-gray-400">
+            Team up for victory. Create your own squad or join an existing team to strategize and conquer team-based tournaments together.
+          </p>
+          {/* --- End Updated Description --- */}
           <div className="absolute -top-1 -left-1 w-8 h-8 bg-red-600/80 flex items-center justify-center font-mono font-bold">
             03
           </div>
@@ -615,7 +643,11 @@ useEffect(() => {
             </svg>
           </div>
           <h3 className="font-mono text-xl mb-3 text-red-500">WIN REWARDS</h3>
-          <p className="text-gray-400">Earn crypto rewards directly to your wallet as you climb the leaderboards</p>
+          {/* --- Updated Description --- */}
+          <p className="text-gray-400">
+            Claim your spoils. Win crypto instantly sent to your wallet and unlock exclusive NFT trophies to showcase your victories on the blockchain.
+          </p>
+          {/* --- End Updated Description --- */}
           <div className="absolute -top-1 -left-1 w-8 h-8 bg-red-600/80 flex items-center justify-center font-mono font-bold">
             04
           </div>
@@ -624,6 +656,8 @@ useEffect(() => {
     </div>
   </div>
 </section>
+
+ 
  
 
 {/* Upcoming Tournaments Preview Section */}
@@ -1062,21 +1096,14 @@ useEffect(() => {
             
             <button 
               className="cyber-glitch-btn relative overflow-hidden font-mono text-base font-semibold uppercase tracking-wider mx-auto"
-              onClick={() => {
-                // Try to play audio when user interacts with buttons too
-                if (audioRef.current && !audioPlaying) {
-                  audioRef.current.play()
-                    .then(() => setAudioPlaying(true))
-                    .catch(e => console.log("Button audio play failed:", e));
-                }
-              }}
+              onClick={handleSignUp}
             >
               <span className="cyber-glitch-btn-text flex items-center justify-center">
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                         d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
-                CONNECT_WALLET
+                 SIGN UP NOW
               </span>
               <span className="cyber-glitch-btn-glitch"></span>
             </button>

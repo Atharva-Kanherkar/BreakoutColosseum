@@ -6,6 +6,8 @@ import { useSearchParams } from 'next/navigation'
 import { Anton } from 'next/font/google'
 import { useAuth } from '@/contexts/AuthContext'
 import ParticleBackground from './ParticleBackground'
+import { useRouter } from 'next/navigation' // Correct import for App Router
+
 
 // Anton font for headings
 const anton = Anton({ weight: '400', subsets: ['latin'], display: 'swap' })
@@ -13,7 +15,7 @@ const anton = Anton({ weight: '400', subsets: ['latin'], display: 'swap' })
 export default function SignIn() {
   const { signIn } = useAuth()
   const searchParams = useSearchParams()
-  
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -51,7 +53,13 @@ export default function SignIn() {
       setLoading(false)
     }
   }
-  
+  const handleGoBack = () => {
+    router.back();
+  }
+
+  const handleGoHome = () => {
+    router.push('/');
+  }
  
      
    
@@ -59,6 +67,25 @@ export default function SignIn() {
 
   return (
     <main className="min-h-screen bg-black text-white overflow-hidden pt-20">
+                  <button
+                onClick={handleGoBack}
+                title="Go Back"
+                className="absolute top-3 left-3 text-gray-500 hover:text-red-500 transition-colors duration-200 z-10 p-1" // Added padding
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+              </button>
+
+              <button
+                onClick={handleGoHome}
+                title="Go to Homepage"
+                className="absolute top-3 right-3 text-gray-500 hover:text-red-500 transition-colors duration-200 z-10 p-1" // Added padding
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+              </button>
       <ParticleBackground />
       
       {/* Background effects */}
@@ -71,7 +98,7 @@ export default function SignIn() {
       <div className="container mx-auto px-4 z-10 relative">
         <div className="max-w-md mx-auto mt-12 mb-24">
           {/* Logo/Header */}
-          <div className="text-center mb-10">
+          {/* <div className="text-center mb-10">
             <h1 
               className={`${anton.className} text-4xl sm:text-5xl mb-4 ${glitchEffect ? 'glitch-text active' : ''}`}
               data-text="SIGN IN"
@@ -82,7 +109,7 @@ export default function SignIn() {
             <p className="text-gray-400 font-mono text-sm">
               Connect your wallet or use credentials
             </p>
-          </div>
+          </div> */}
           
           {/* Sign In Card */}
           <div className="relative">
@@ -93,7 +120,7 @@ export default function SignIn() {
             <div className="bg-black/60 backdrop-blur-lg border border-red-900/30 p-6 sm:p-8">
               {/* Connection Options */}
               <div className="mb-8">
-                <button className="w-full bg-black/80 border border-red-900/50 hover:border-red-600 text-white font-mono text-sm uppercase py-3 px-4 mb-3 flex items-center justify-center transition-colors duration-300">
+                {/* <button className="w-full bg-black/80 border border-red-900/50 hover:border-red-600 text-white font-mono text-sm uppercase py-3 px-4 mb-3 flex items-center justify-center transition-colors duration-300">
                   <div className="w-5 h-5 mr-2">
                     <img
                       src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDM5Ny43IDMxMS43Ij48bGluZWFyR3JhZGllbnQgaWQ9ImEiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIiB4MT0iMzYwLjg3OSIgeTE9IjM1MS40NTUiIHgyPSIxNDEuMjEzIiB5Mj0iLTY5LjI5NCIgZ3JhZGllbnRUcmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAtMSAwIDMxNCkiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzAwRkZBMyIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI0RDMUZGRiIvPjwvbGluZWFyR3JhZGllbnQ+PHBhdGggZmlsbD0idXJsKCNhKSIgZD0iTTY0LjYgMjM3LjljMi40LTIuNCA1LjctMy44IDkuMi0zLjhoMzE3LjRjNS44IDAgOC43IDcgNC42IDExLjFsLTYyLjcgNjIuN2MtMi40IDIuNC01LjcgMy44LTkuMiAzLjhINi41Yy01LjggMC04LjctNy00LjYtMTEuMWw2Mi43LTYyLjd6TTY0LjYgMy44QzY3LjEgMS40IDcwLjQgMCA3My44IDBoMzE3LjRjNS44IDAgOC43IDcgNC42IDExLjFsLTYyLjcgNjIuN2MtMi40IDIuNC01LjcgMy44LTkuMiAzLjhINi41Yy01LjggMC04LjctNy00LjYtMTEuMUw2NC42IDMuOHpNMzMzLjEgMTIwLjljLTIuNC0yLjQtNS43LTMuOC05LjItMy44SDYuNWMtNS44IDAtOC43IDctNC42IDExLjFsNjIuNyA2Mi43YzIuNCAyLjQgNS43IDMuOCA5LjIgMy44aDMxNy40YzUuOCAwIDguNy03IDQuNi0xMS4xbC02Mi43LTYyLjd6Ii8+PC9zdmc+"
@@ -102,17 +129,17 @@ export default function SignIn() {
                     />
                   </div>
                   Connect Solana Wallet
-                </button>
+                </button> */}
                 
               
               </div>
               
               {/* Divider */}
-              <div className="flex items-center mb-8">
+              {/* <div className="flex items-center mb-8">
                 <div className="h-px bg-red-900/30 flex-grow"></div>
                 <span className="px-4 text-gray-500 text-sm font-mono">OR</span>
                 <div className="h-px bg-red-900/30 flex-grow"></div>
-              </div>
+              </div> */}
               
               {/* Sign In Form */}
               <form onSubmit={handleSubmit} className="space-y-5">

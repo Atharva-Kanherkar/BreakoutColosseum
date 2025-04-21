@@ -5,14 +5,15 @@ import Link from 'next/link'
 import { Anton } from 'next/font/google'
 import { useAuth } from '@/contexts/AuthContext'
 import ParticleBackground from './ParticleBackground'
-import router from 'next/router'
+ 
+import { useRouter } from 'next/navigation' // Import the correct hook
 
 // Anton font for headings
 const anton = Anton({ weight: '400', subsets: ['latin'], display: 'swap' })
 
 export default function SignUp() {
   const { signUp } = useAuth()
-  
+  const router = useRouter()
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -49,7 +50,13 @@ export default function SignUp() {
       setLoading(false)
     }
   }
-  
+  const handleGoBack = () => {
+    router.back();
+  }
+
+  const handleGoHome = () => {
+    router.push('/');
+  }
   const handleWalletConnect = async () => {
     try {
       setLoading(true);
@@ -114,7 +121,26 @@ export default function SignUp() {
   }
  
   return (
-    <main className="min-h-screen bg-black text-white overflow-hidden pt-20">
+    <main className="min-h-screen bg-black text-white overflow-hidden pt-20 pb-20">
+                    <button
+                onClick={handleGoBack}
+                title="Go Back"
+                className="absolute top-3 left-3 text-gray-500 hover:text-red-500 transition-colors duration-200 z-10 p-1" // Added padding
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+              </button>
+
+              <button
+                onClick={handleGoHome}
+                title="Go to Homepage"
+                className="absolute top-3 right-3 text-gray-500 hover:text-red-500 transition-colors duration-200 z-10 p-1" // Added padding
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+              </button>
       <ParticleBackground />
       
       {/* Background effects */}
@@ -148,7 +174,7 @@ export default function SignUp() {
             
             <div className="bg-black/60 backdrop-blur-lg border border-red-900/30 p-6 sm:p-8">
               {/* Connection Options */}
-              <div className="mb-8">
+              {/* <div className="mb-8">
                 <button 
                   onClick={handleWalletConnect} 
                   className="w-full bg-black/80 border border-red-900/50 hover:border-red-600 text-white font-mono text-sm uppercase py-3 px-4 mb-3 flex items-center justify-center transition-colors duration-300"
@@ -162,12 +188,12 @@ export default function SignUp() {
                   </div>
                   Connect Solana Wallet
                 </button>
-              </div>
+              </div> */}
               
               {/* Divider */}
               <div className="flex items-center mb-8">
                 <div className="h-px bg-red-900/30 flex-grow"></div>
-                <span className="px-4 text-gray-500 text-sm font-mono">OR CREATE ACCOUNT</span>
+                <span className="px-4 text-gray-500 text-sm font-mono"> CREATE ACCOUNT</span>
                 <div className="h-px bg-red-900/30 flex-grow"></div>
               </div>
               
@@ -328,6 +354,7 @@ export default function SignUp() {
           </div>
         </div>
       </div>
+      
     </main>
   );
 }
