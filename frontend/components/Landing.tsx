@@ -338,7 +338,7 @@ useEffect(() => {
                   audioRef.current.play()
                     .then(() => setAudioPlaying(true))
                     .catch(e => console.log("Button audio play failed:", e));
-                }
+                }       router.push('/signup'); 
               }}
             >
               <span className="cyber-glitch-btn-text flex items-center justify-center">
@@ -998,14 +998,14 @@ useEffect(() => {
     </div>
     
     {/* View Full Leaderboard Link */}
-    <div className="mt-8 text-center">
+    {/* <div className="mt-8 text-center">
       <Link 
         href="/leaderboards"
         className="inline-block border border-red-600 text-red-500 hover:text-white hover:bg-red-600/30 font-mono uppercase py-2 px-6 text-sm transition-colors duration-300"
       >
         View Full Leaderboard
       </Link>
-    </div>
+    </div> */}
   </div>
 </section>
       

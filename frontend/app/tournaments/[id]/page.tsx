@@ -562,7 +562,7 @@ export default function TournamentDetailPage() {
  
 
           {!session && tournament.status === 'REGISTRATION_OPEN' && !isFull && (
-             <Link href={`/login?redirect=/tournaments/${tournament.id}`} className="font-mono text-sm uppercase tracking-wider px-6 py-3 text-white bg-gray-700/50 border border-gray-700 hover:bg-gray-600/50 transition-all duration-300">
+             <Link href={`/signin?redirect=/tournaments/${tournament.id}`} className="font-mono text-sm uppercase tracking-wider px-6 py-3 text-white bg-gray-700/50 border border-gray-700 hover:bg-gray-600/50 transition-all duration-300">
                Login to Register {entryFeeText}
              </Link>
           )}

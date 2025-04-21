@@ -48,6 +48,19 @@ export default function SignIn() {
     try {
       await signIn(email, password)
       // Navigation is handled in the AuthContext
+      const redirectPath = searchParams.get('redirect')
+      if (redirectPath) {
+        // Basic validation: ensure it's an internal path
+        if (redirectPath.startsWith('/')) {
+          console.log(`Redirecting to: ${redirectPath}`)
+          router.push(redirectPath) // Use the path from the query parameter
+        } else {
+          console.warn(`Invalid redirect path ignored: ${redirectPath}`)
+          router.push('/dashboard') // Fallback to default if path is invalid
+        }
+      } else {
+        router.push('/dashboard') // Default redirect if no parameter
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to sign in')
       setLoading(false)
