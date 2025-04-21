@@ -12,15 +12,14 @@ import { Prisma, Tournament } from '@prisma/client';
 import * as prizeService from '../prize/service';
 
 
-// Helper function to map Prisma result to TournamentWithDetails
 function mapToTournamentWithDetails(tournament: any): TournamentWithDetails {
   return {
     ...tournament,
     host: tournament.host,
-    _count: tournament._count
+    _count: tournament._count,
+    prize: tournament.prize // Make sure prize is included if it exists
   };
 }
-
 export const createTournament = async (
   userId: string, 
   data: CreateTournamentData
@@ -152,7 +151,8 @@ export const getTournamentById = async (id: string): Promise<TournamentWithDetai
           teams: true,
           spectators: true
         }
-      }
+      },
+      prize: true
     }
   });
   

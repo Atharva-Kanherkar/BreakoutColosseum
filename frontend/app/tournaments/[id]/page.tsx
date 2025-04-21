@@ -200,8 +200,13 @@ export default function TournamentDetailPage() {
     try {
       // --- Handle Entry Fee Payment ---
       // tournament is guaranteed non-null here
-      const entryFeeRequired = tournament.prize?.entryFee && parseFloat(tournament.prize.entryFee) > 0;
-
+      console.log('--- Registration Check ---');
+      console.log('Tournament Prize:', tournament?.prize);
+      console.log('Entry Fee String:', tournament?.prize?.entryFee);
+      console.log('Parsed Entry Fee:', parseFloat(tournament?.prize?.entryFee ?? 'NaN')); // Use NaN default for clarity
+      const entryFeeRequired = tournament?.prize?.entryFee && parseFloat(tournament.prize.entryFee) > 0;
+      console.log('Is Entry Fee Required?', entryFeeRequired);
+      console.log('--------------------------');
       if (entryFeeRequired) {
         const paymentToastId = toast.loading('Preparing entry fee transaction...');
 
@@ -514,7 +519,7 @@ export default function TournamentDetailPage() {
           )}
 
           {/* Unregister Button */}
-          {canUnregister && (
+         
             <button
               onClick={handleUnregister}
               disabled={isUnregistering}
@@ -522,7 +527,7 @@ export default function TournamentDetailPage() {
             >
               {isUnregistering ? 'Processing...' : 'Unregister'}
             </button>
-          )}
+       
 
           {/* Register Button Logic */}
           {canRegister && (
