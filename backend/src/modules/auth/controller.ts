@@ -30,7 +30,15 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     res.status(201).json(result);
   } catch (error: any) {
     console.error('Registration error:', error);
-    res.status(500).json({ error: error.message || 'Registration failed' });
+    // Ensure a JSON response is always sent on error
+    const statusCode = error.status || 500; // Use error status if available, else 500
+    const message = error.message || 'An unexpected error occurred during registration.';
+    // Check if it looks like a Supabase rate limit error specifically
+    if (typeof error.message === 'string' && error.message.includes('rate limit')) {
+       res.status(429).json({ error: 'Too many registration attempts. Please try again later.' });
+    } else {
+       res.status(statusCode).json({ error: message });
+    }
   }
 };
 
