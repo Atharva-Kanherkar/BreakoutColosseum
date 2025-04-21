@@ -123,7 +123,6 @@ model Match {
   minParticipants     Int?
   maxParticipants     Int?
   teamSize            Int?
-  organizerId  String?
 
   isTeamBased         Boolean          @default(false)
     matches      Match[]
